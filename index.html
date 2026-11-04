@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#06080d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Mirrormorph</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+  </script>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="hud" class="hidden">
+    <div class="hud-top">
+      <button id="btn-back" class="icon-btn" aria-label="Room select">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <div class="bars">
+        <div class="bar"><span class="bar-label">HULL</span><div class="bar-track"><div id="hp-base" class="bar-fill base"></div></div></div>
+        <div class="bar" id="form-wrap"><span class="bar-label" id="form-label">FORM</span><div class="bar-track"><div id="hp-form" class="bar-fill form"></div></div></div>
+        <div class="bar" id="boss-wrap"><span class="bar-label">BOSS</span><div class="bar-track"><div id="hp-boss" class="bar-fill boss"></div></div></div>
+      </div>
+      <button id="btn-restart" class="icon-btn" aria-label="Restart room">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg>
+      </button>
+      <button id="btn-debug" class="icon-btn" aria-label="Tuning panel">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+      </button>
+    </div>
+    <div id="status"></div>
+    <div id="toast"></div>
+    <div id="timestop-hint">TAP A TARGET</div>
+    <button id="btn-fire" class="fire-btn" aria-label="Fire"></button>
+  </div>
+
+  <div id="menu">
+    <h1>MIRRORMORPH</h1>
+    <p class="tagline">One verb: shoot, solve, sneak.</p>
+    <div id="room-list"></div>
+    <p class="controls">Drag anywhere to fly · Stay near a thing to copy it · FIRE stops time, tap a target</p>
+  </div>
+
+  <div id="banner" class="hidden">
+    <div class="banner-box">
+      <div id="banner-title"></div>
+      <div id="banner-sub"></div>
+      <div id="banner-actions"></div>
+    </div>
+  </div>
+
+  <div id="debug" class="hidden"></div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
