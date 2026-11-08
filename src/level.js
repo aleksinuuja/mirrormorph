@@ -27,10 +27,10 @@ export default {
     '#######..######..######',
     '#######..###........###',
     '##........##.S....S.###',
-    '##........##.S......###',
+    '##........##........###',
     '##...1....##.S....S.###',
-    '##.o...o..##......S.###',
     '##.o...o..##........###',
+    '##.o...o..##.S....S.###',
     '##........####..#######',
     '##.o...o..####..#######',
     '##.o...o..####..#######',
@@ -48,13 +48,14 @@ export default {
     '#######################',
   ],
 
-  // Guard room. Posted sentries sweep their gaze: facing ± arc/2, one full sweep every `period` s.
+  // Guard room: two columns facing each other. Bodies stay square; heads sweep facing ± arc/2,
+  // one full sweep every `period` s. Reading order: left top, right top, left mid, right mid, ...
   posted: [
-    { facing: 0, arc: 100, period: 4.6, phase: 0.0 },     // left column, top
-    { facing: 180, arc: 100, period: 5.2, phase: 2.0 },   // right column, top
-    { facing: 0, arc: 110, period: 3.9, phase: 1.2 },     // left column, middle
-    { facing: -20, arc: 110, period: 5.0, phase: 3.3 },   // left column, bottom: also watches the corridor
-    { facing: 180, arc: 100, period: 4.3, phase: 0.6 },   // right column, middle
-    { facing: -160, arc: 110, period: 4.8, phase: 4.1 },  // right column, bottom: also watches the corridor
+    { facing: 0, arc: 100, period: 4.5, phase: 0.0 },
+    { facing: 180, arc: 100, period: 4.5, phase: 1.05 },
+    { facing: 0, arc: 100, period: 4.5, phase: 2.1 },
+    { facing: 180, arc: 100, period: 4.5, phase: 3.15 },
+    { facing: 0, arc: 100, period: 4.5, phase: 4.2 },
+    { facing: 180, arc: 100, period: 4.5, phase: 5.25 },
   ],
 };

@@ -19,7 +19,7 @@ To try it on a phone on the same Wi-Fi, run `python3 -m http.server 8765 --bind 
 
 - **Move:** touch anywhere and hold. A virtual joystick appears under your finger. Holding still keeps walking, and releasing stops. On desktop you can also use WASD or the arrow keys.
 - **Copy a sentry:** stay within range *behind* it (inside its rear 120° arc) until the clock fills. The range circle turns red if you're beside or in front of it.
-- **FIRE:** stops time so you can tap a target. Firing is an attack: it raises the alarm and blows any disguise. Space toggles FIRE/STOP on desktop.
+- **FIRE:** hold to shoot straight ahead, the way you're facing. Space on desktop. Gunfire raises the alarm and blows any disguise.
 
 ## Rules
 
@@ -27,7 +27,7 @@ To try it on a phone on the same Wi-Fi, run `python3 -m http.server 8765 --bind 
 - While the sentries are unaware, the beam is their only marker. After the alarm the beams vanish and each sentry gets a red ring.
 - If any part of you is in a cone while undisguised, the alarm goes off.
 - Once alerted, all sentries hunt you through the maze for the rest of the attempt. Dying restarts the level.
-- A copied form drains over time. Bumping into robots drains it faster.
+- A copied form drains fast (3 HP/s, so a sentry disguise lasts about 10 s). Bumping into robots drains it faster. The tight route is intended: copy the hall patroller near the corridor and go.
 
 ## Files
 

@@ -128,8 +128,7 @@ body.timestop #timestop-hint { display: block; }
   touch-action: none;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
 }
-.fire-btn.selecting { border-color: #fff; animation: pulse 0.9s ease-in-out infinite; }
-.fire-btn.firing { border-color: var(--red); background: rgba(70, 14, 14, 0.85); color: #ffd0d0; }
+.fire-btn.firing { border-color: var(--red); background: rgba(70, 14, 14, 0.85); color: #ffd0d0; transform: scale(0.94); }
 .fire-btn:disabled { opacity: 0.3; }
 @keyframes pulse { 50% { transform: scale(1.08); } }
 

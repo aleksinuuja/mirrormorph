@@ -20,7 +20,7 @@ const ui = new UI({
   level,
   onPlay: play,
   onMenu: menu,
-  onFire: () => world.pressFire(),
+  onFire: (on) => world.setFiring(on),
   onRestart: () => { if (world.room) world.load(world.room); },
   onToggleDebug: () => debugEl.classList.toggle('hidden'),
 });
@@ -64,11 +64,6 @@ if (new URLSearchParams(location.search).has('debug')) debugEl.classList.remove(
 // ---------- Touch / mouse: joystick, or target selection during time-stop ----------
 canvas.addEventListener('pointerdown', (ev) => {
   if (!world.room || world.state !== 'playing') return;
-  if (world.fire.mode === 'selecting') {
-    const w = view.screenToWorld(ev.clientX, ev.clientY);
-    if (w) world.selectAt(w.x, w.y);
-    return;
-  }
   if (stick.start(ev)) canvas.setPointerCapture?.(ev.pointerId);
 });
 canvas.addEventListener('pointermove', (ev) => stick.move(ev));
@@ -85,13 +80,16 @@ window.addEventListener('keydown', (ev) => {
   if (ev.target instanceof HTMLInputElement) return;
   if (ev.code === 'Space') {
     ev.preventDefault();
-    if (world.room && !ev.repeat) world.pressFire();
+    if (world.room) world.setFiring(true);
     return;
   }
   keys.add(ev.code);
 });
-window.addEventListener('keyup', (ev) => keys.delete(ev.code));
-window.addEventListener('blur', () => keys.clear());
+window.addEventListener('keyup', (ev) => {
+  if (ev.code === 'Space') world.setFiring(false);
+  keys.delete(ev.code);
+});
+window.addEventListener('blur', () => { keys.clear(); world.setFiring(false); });
 
 function readInput() {
   if (stick.active) return [stick.x, stick.y];

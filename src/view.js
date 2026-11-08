@@ -353,7 +353,7 @@ export class View {
   sync(world, dt) {
     this.time += dt;
     if (!world.room) return;
-    const frozen = world.fire.mode === 'selecting' || world.freezeTimer > 0;
+    const frozen = world.freezeTimer > 0;
     const simDt = frozen ? 0 : dt;
     const p = world.player;
 
@@ -434,14 +434,6 @@ export class View {
       this.chargeRing.material.color.setHex(state);
     } else {
       this.sectorLen = -1;
-    }
-
-    const ft = world.fire.target;
-    this.reticle.visible = world.fire.mode === 'firing' && !!ft && ft.alive;
-    if (this.reticle.visible) {
-      this.reticle.position.set(ft.x, 0.06, -ft.y);
-      this.reticle.scale.setScalar(ft.radius + 0.3);
-      this.reticle.rotation.y = this.time * 2;
     }
 
     if (this.exitMesh) this.exitMesh.material.opacity = 0.22 + 0.12 * Math.sin(this.time * 3);

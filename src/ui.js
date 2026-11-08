@@ -1,7 +1,6 @@
 // DOM HUD: title screen, bars, fire button, alarm flash, banners, toasts.
 
 const ICON_FIRE = '<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="6.5"/><path d="M12 2.5v5M12 16.5v5M2.5 12h5M16.5 12h5"/></svg>';
-const ICON_STOP = '<svg viewBox="0 0 24 24" width="30" height="30"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg>';
 
 const $ = (id) => document.getElementById(id);
 
@@ -23,7 +22,17 @@ export class UI {
 
     const fire = $('btn-fire');
     fire.innerHTML = ICON_FIRE;
-    fire.addEventListener('pointerdown', (ev) => { ev.preventDefault(); ev.stopPropagation(); onFire(); });
+    // Hold to fire. Pointer capture keeps the release even if the thumb slides off.
+    fire.addEventListener('pointerdown', (ev) => {
+      ev.preventDefault(); ev.stopPropagation();
+      fire.setPointerCapture?.(ev.pointerId);
+      fire.classList.add('firing');
+      onFire(true);
+    });
+    const release = () => { fire.classList.remove('firing'); onFire(false); };
+    fire.addEventListener('pointerup', release);
+    fire.addEventListener('pointercancel', release);
+    fire.addEventListener('lostpointercapture', release);
     $('btn-back').addEventListener('click', onMenu);
     $('btn-restart').addEventListener('click', onRestart);
     $('btn-debug').addEventListener('click', onToggleDebug);
@@ -33,7 +42,7 @@ export class UI {
     $('menu').classList.remove('hidden');
     $('hud').classList.add('hidden');
     this.hideBanner();
-    document.body.classList.remove('timestop', 'alerted');
+    document.body.classList.remove('alerted');
   }
 
   showHud() {
@@ -112,16 +121,7 @@ export class UI {
       this.set('formHp', pct(p.formHp / p.formMaxHp), (v) => { $('hp-form').style.width = v; });
     }
 
-    const mode = world.fire.mode;
-    this.set('fireMode', mode, (m) => {
-      const b = $('btn-fire');
-      b.classList.toggle('selecting', m === 'selecting');
-      b.classList.toggle('firing', m === 'firing');
-      b.innerHTML = m === 'firing' ? ICON_STOP : ICON_FIRE;
-      b.setAttribute('aria-label', m === 'firing' ? 'Stop' : m === 'selecting' ? 'Cancel' : 'Fire');
-      document.body.classList.toggle('timestop', m === 'selecting');
-    });
-    this.set('fireDisabled', mode === 'off' && !world.canFire, (v) => { $('btn-fire').disabled = v; });
+    this.set('fireDisabled', !world.canFire, (v) => { $('btn-fire').disabled = v; });
     this.set('alerted', !!world.alerted, (v) => document.body.classList.toggle('alerted', v));
 
     let status = '';

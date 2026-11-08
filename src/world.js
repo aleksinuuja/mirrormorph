@@ -21,7 +21,7 @@ export class World {
     this.entities = [];
     this.bullets = [];
     this.input = { x: 0, y: 0 };
-    this.fire = { mode: 'off', target: null, manual: false };
+    this.firing = false;
     this.charge = { target: null, t: 0, inRange: false, behind: false };
   }
 
@@ -45,7 +45,7 @@ export class World {
     this.stateTimer = 0;
     this.time = 0;
     this.input = { x: 0, y: 0 };
-    this.fire = { mode: 'off', target: null, manual: false };
+    this.firing = false;
     this.charge = { target: null, t: 0, inRange: false, behind: false };
 
     if (g.exitTiles.length) {
@@ -129,30 +129,9 @@ export class World {
     return this.state === 'playing' && this.player.alive && this.player.weapons.length > 0;
   }
 
-  pressFire() {
-    const f = this.fire;
-    if (f.mode === 'off') {
-      if (this.canFire) f.mode = 'selecting';
-    } else {
-      f.mode = 'off';
-      f.target = null;
-    }
-  }
-
-  // Tap during time-stop. Empty space cancels.
-  selectAt(x, y) {
-    const f = this.fire;
-    let best = null, bd = Infinity;
-    for (const e of this.entities) {
-      if (!e.alive) continue;
-      const d = Math.hypot(e.x - x, e.y - y) - e.radius;
-      if (d < config.fire.selectRadius && d < bd) { bd = d; best = e; }
-    }
-    if (!best) { f.mode = 'off'; f.target = null; return; }
-    f.target = best;
-    f.manual = true;
-    f.mode = 'firing';
-    this.alert(this.isDisguised() ? 'Cover blown' : 'You opened fire'); // choosing a target is an attack
+  // Fire button held down: shoot straight ahead at the weapon's rate.
+  setFiring(on) {
+    this.firing = !!on;
   }
 
   // ======================================================== factions & stealth
@@ -217,7 +196,6 @@ export class World {
       if (this.state === 'dead' && this.stateTimer <= 0) this.load(this.room);
       return;
     }
-    if (this.fire.mode === 'selecting') return; // time is stopped
     if (this.freezeTimer > 0) { this.freezeTimer -= dt; return; } // alarm beat
 
     this.time += dt;
@@ -247,11 +225,7 @@ export class World {
     if (p.speed > 0 && m > 0) {
       p.x += ix * p.speed * dt;
       p.y += iy * p.speed * dt;
-      if (this.fire.mode !== 'firing' && m > 0.05) p.angle = turnToward(p.angle, Math.atan2(iy, ix), 14 * dt);
-    }
-    const t = this.fire.target;
-    if (this.fire.mode === 'firing' && t && t.alive) {
-      p.angle = turnToward(p.angle, Math.atan2(t.y - p.y, t.x - p.x), 14 * dt);
+      if (m > 0.05) p.angle = turnToward(p.angle, Math.atan2(iy, ix), 14 * dt);
     }
   }
 
@@ -298,8 +272,6 @@ export class World {
     p.angle = t.angle;
     this.charge.target = null;
     this.charge.t = 0;
-    this.fire.mode = 'off';   // snapping interrupts fire so you don't blow a fresh disguise
-    this.fire.target = null;
     this.view.setEntityShape(p);
     this.view.ringFx(p.x, p.y, 0xffffff, 2.2);
     this.view.burst(p.x, p.y, 0xbfe8ff, 10, 2.5);
@@ -340,34 +312,15 @@ export class World {
   }
 
   updatePlayerFire(dt) {
-    const p = this.player, f = this.fire;
+    const p = this.player;
     for (const w of p.weapons) w.cd = Math.max(0, w.cd - dt);
-    if (f.mode !== 'firing' || !p.alive) return;
-    if (!p.weapons.length) { f.mode = 'off'; f.target = null; return; }
-    if (f.target && f.target.alive && !f.manual && f.target === this.charge.target) f.target = null;
-    if (!f.target || !f.target.alive) {
-      f.target = this.nearestHostile();
-      f.manual = false;
-      if (!f.target) { f.mode = 'off'; return; }
-    }
+    if (!this.firing || !p.alive) return;
     for (const w of p.weapons) {
       if (w.cd > 0) continue;
       w.cd = 1 / w.rate;
-      const disguised = this.isDisguised();
-      this.alert(disguised ? 'Cover blown' : 'You opened fire');
-      this.shoot(p, w, f.target, 'player', 0, disguised);
+      this.alert(this.isDisguised() ? 'Cover blown' : 'Shots fired'); // gunfire is never quiet
+      this.shoot(p, w, p.angle, 'player');
     }
-  }
-
-  nearestHostile() {
-    const p = this.player;
-    let best = null, bd = Infinity;
-    for (const e of this.entities) {
-      if (!e.alive || e === this.charge.target || this.factionOf(e) !== 'hostile') continue;
-      const d = dist(p, e);
-      if (d < bd) { bd = d; best = e; }
-    }
-    return best;
   }
 
   // ======================================================== sentry AI
@@ -396,7 +349,7 @@ export class World {
       const want = e.pState === 'turn' ? 0 : 1;
       e.scan = (e.scan ?? 0) + (want - (e.scan ?? 0)) * Math.min(1, dt * 3);
       e.gaze = e.angle + e.scan * ((P.scanArc * DEG) / 2) * Math.sin((this.time * TAU) / P.scanPeriod + (e.scanPhase || 0));
-    } else {
+    } else if (this.alerted || e.mode !== 'posted') {
       e.gaze = e.angle;
     }
   }
@@ -411,8 +364,10 @@ export class World {
     return d - step;
   }
 
+  // Posted sentries stand square to their post; only the head sweeps.
   posted(e, dt) {
-    e.angle = e.baseAngle + e.arcHalf * Math.sin(e.phase + (this.time * TAU) / e.period);
+    e.angle = e.baseAngle;
+    e.gaze = e.baseAngle + e.arcHalf * Math.sin(e.phase + (this.time * TAU) / e.period);
     if (dist(e, e.home) > 0.05) this.moveToward(e, e.home.x, e.home.y, e.speed * 0.5, dt, false);
   }
 
@@ -470,7 +425,7 @@ export class World {
         for (const w of e.weapons) {
           if (w.cd > 0) continue;
           w.cd = 1 / (w.rate * config.ai.fireRateMult);
-          this.shoot(e, w, p, 'hostile', config.ai.aimError);
+          this.shoot(e, w, Math.atan2(p.y - e.y, p.x - e.x), 'hostile', config.ai.aimError);
         }
       }
       return;
@@ -500,8 +455,8 @@ export class World {
   }
 
   // ======================================================== shooting
-  shoot(src, w, target, side, aimError = 0, onlyTarget = false) {
-    const base = Math.atan2(target.y - src.y, target.x - src.x) + (Math.random() * 2 - 1) * aimError;
+  shoot(src, w, angle, side, aimError = 0) {
+    const base = angle + (Math.random() * 2 - 1) * aimError;
     const n = w.count || 1;
     const angles = [];
     if (w.pattern === 'spread' && n > 1) {
@@ -520,7 +475,7 @@ export class World {
         life: config.bullets.life,
         radius: config.bullets.radius,
         damage: w.damage,
-        side, ownerId: src.id, target, onlyTarget,
+        side, ownerId: src.id,
         alive: true,
       };
       this.bullets.push(b);
@@ -544,7 +499,6 @@ export class World {
       if (b.side === 'player') {
         for (const e of this.entities) {
           if (!e.alive) continue;
-          if (e !== b.target && (b.onlyTarget || this.factionOf(e) !== 'hostile')) continue;
           if (Math.hypot(e.x - b.x, e.y - b.y) < e.radius + b.radius) {
             this.damage(e, b.damage);
             b.alive = false;
@@ -599,8 +553,7 @@ export class World {
     this.view.removeEntity(p);
     this.view.burst(p.x, p.y, 0xffffff, 30, 5);
     this.view.ringFx(p.x, p.y, 0xffffff, 3);
-    this.fire.mode = 'off';
-    this.fire.target = null;
+    this.firing = false;
     this.state = 'dead';
     this.stateTimer = 1.6;
     this.emit('dead', reason);
@@ -695,8 +648,7 @@ export class World {
 
   win() {
     this.state = 'won';
-    this.fire.mode = 'off';
-    this.fire.target = null;
+    this.firing = false;
     this.emit('won');
   }
 }
