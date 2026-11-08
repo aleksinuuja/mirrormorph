@@ -15,15 +15,17 @@
 <body>
   <canvas id="game"></canvas>
 
+  <div id="joy"><div id="joy-knob"></div></div>
+  <div id="alarm-flash"></div>
+
   <div id="hud" class="hidden">
     <div class="hud-top">
-      <button id="btn-back" class="icon-btn" aria-label="Room select">
+      <button id="btn-back" class="icon-btn" aria-label="Menu">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
       </button>
       <div class="bars">
         <div class="bar"><span class="bar-label">HULL</span><div class="bar-track"><div id="hp-base" class="bar-fill base"></div></div></div>
         <div class="bar" id="form-wrap"><span class="bar-label" id="form-label">FORM</span><div class="bar-track"><div id="hp-form" class="bar-fill form"></div></div></div>
-        <div class="bar" id="boss-wrap"><span class="bar-label">BOSS</span><div class="bar-track"><div id="hp-boss" class="bar-fill boss"></div></div></div>
       </div>
       <button id="btn-restart" class="icon-btn" aria-label="Restart room">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg>
@@ -40,9 +42,9 @@
 
   <div id="menu">
     <h1>MIRRORMORPH</h1>
-    <p class="tagline">One verb: shoot, solve, sneak.</p>
+    <p class="tagline">Become what you sneak up on.</p>
     <div id="room-list"></div>
-    <p class="controls">Drag anywhere to fly · Stay near a thing to copy it · FIRE stops time, tap a target</p>
+    <p class="controls">Touch anywhere and hold to walk (joystick) · WASD on desktop<br>Stay behind a sentry to copy it · Red beams = sight · FIRE stops time, tap a target</p>
   </div>
 
   <div id="banner" class="hidden">

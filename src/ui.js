@@ -1,4 +1,4 @@
-// DOM HUD: room select, bars, fire button, banners, toasts.
+// DOM HUD: title screen, bars, fire button, alarm flash, banners, toasts.
 
 const ICON_FIRE = '<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="6.5"/><path d="M12 2.5v5M12 16.5v5M2.5 12h5M16.5 12h5"/></svg>';
 const ICON_STOP = '<svg viewBox="0 0 24 24" width="30" height="30"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg>';
@@ -6,27 +6,25 @@ const ICON_STOP = '<svg viewBox="0 0 24 24" width="30" height="30"><rect x="6" y
 const $ = (id) => document.getElementById(id);
 
 export class UI {
-  constructor({ rooms, onSelectRoom, onFire, onBack, onRestart, onToggleDebug }) {
-    this.rooms = rooms;
-    this.onSelectRoom = onSelectRoom;
+  constructor({ level, onPlay, onMenu, onFire, onRestart, onToggleDebug }) {
+    this.onPlay = onPlay;
+    this.onMenu = onMenu;
     this.cache = {};
     this.toastTimer = 0;
 
     const list = $('room-list');
-    rooms.forEach((r, i) => {
-      const b = document.createElement('button');
-      b.className = 'room-card';
-      b.innerHTML = `<div class="room-num">${i + 1}</div><div><div class="room-name"></div><div class="room-blurb"></div></div>`;
-      b.querySelector('.room-name').textContent = r.name;
-      b.querySelector('.room-blurb').textContent = r.blurb;
-      b.addEventListener('click', () => onSelectRoom(i));
-      list.append(b);
-    });
+    const b = document.createElement('button');
+    b.className = 'room-card';
+    b.innerHTML = '<div class="room-num">▶</div><div><div class="room-name"></div><div class="room-blurb"></div></div>';
+    b.querySelector('.room-name').textContent = level.name;
+    b.querySelector('.room-blurb').textContent = level.blurb;
+    b.addEventListener('click', onPlay);
+    list.append(b);
 
     const fire = $('btn-fire');
     fire.innerHTML = ICON_FIRE;
     fire.addEventListener('pointerdown', (ev) => { ev.preventDefault(); ev.stopPropagation(); onFire(); });
-    $('btn-back').addEventListener('click', onBack);
+    $('btn-back').addEventListener('click', onMenu);
     $('btn-restart').addEventListener('click', onRestart);
     $('btn-debug').addEventListener('click', onToggleDebug);
   }
@@ -35,7 +33,7 @@ export class UI {
     $('menu').classList.remove('hidden');
     $('hud').classList.add('hidden');
     this.hideBanner();
-    document.body.classList.remove('timestop');
+    document.body.classList.remove('timestop', 'alerted');
   }
 
   showHud() {
@@ -71,25 +69,28 @@ export class UI {
     $('banner').classList.add('hidden');
   }
 
-  onEvent(type, data, world, roomIndex) {
+  flashAlarm() {
+    const f = $('alarm-flash');
+    f.classList.remove('go');
+    void f.offsetWidth; // restart the CSS animation
+    f.classList.add('go');
+  }
+
+  onEvent(type, data) {
     switch (type) {
       case 'loaded': this.hideBanner(); break;
       case 'hint': this.toast(data, 2600); break;
       case 'status': this.toast(data, 2000); break;
       case 'morph': this.toast(`◆ ${data.toUpperCase()}`, 1200); break;
-      case 'revert': this.toast('REVERTED', 1000); break;
+      case 'revert': this.toast('FORM LOST', 1200); break;
+      case 'alert': this.flashAlarm(); this.toast(`ALERT · ${String(data).toUpperCase()}`, 2200); break;
       case 'dead': this.banner('DESTROYED', data); break;
-      case 'won': {
-        const actions = [
-          { label: 'Replay', onClick: () => this.onSelectRoom(roomIndex) },
-          { label: 'Rooms', onClick: () => this.onSelectRoom(-1) },
-        ];
-        if (roomIndex + 1 < this.rooms.length) {
-          actions.push({ label: 'Next room', primary: true, onClick: () => this.onSelectRoom(roomIndex + 1) });
-        }
-        this.banner('ROOM CLEAR', world.room.name, actions);
+      case 'won':
+        this.banner('ESCAPED', 'You made it out.', [
+          { label: 'Menu', onClick: this.onMenu },
+          { label: 'Play again', primary: true, onClick: this.onPlay },
+        ]);
         break;
-      }
     }
   }
 
@@ -110,9 +111,6 @@ export class UI {
       this.set('formLabel', p.arch.label.toUpperCase(), (v) => { $('form-label').textContent = v; });
       this.set('formHp', pct(p.formHp / p.formMaxHp), (v) => { $('hp-form').style.width = v; });
     }
-    const boss = world.room.goal === 'boss' ? world.entities.find((e) => e.isBoss) : null;
-    this.set('bossOn', !!boss, (v) => $('boss-wrap').classList.toggle('hidden', !v));
-    if (boss) this.set('bossHp', pct(boss.hp / boss.maxHp), (v) => { $('hp-boss').style.width = v; });
 
     const mode = world.fire.mode;
     this.set('fireMode', mode, (m) => {
@@ -124,12 +122,13 @@ export class UI {
       document.body.classList.toggle('timestop', m === 'selecting');
     });
     this.set('fireDisabled', mode === 'off' && !world.canFire, (v) => { $('btn-fire').disabled = v; });
+    this.set('alerted', !!world.alerted, (v) => document.body.classList.toggle('alerted', v));
 
     let status = '';
-    if (p.alive && p.form) {
-      if (p.arch.isBoss) status = 'MIRROR BOSS';
+    if (p.alive) {
+      if (world.alerted) status = 'ALERT · ALL SENTRIES HUNTING';
       else if (world.isDisguised()) status = `DISGUISED · ${p.arch.label.toUpperCase()}`;
-      else if (p.immovable) status = 'INANIMATE · WAIT IT OUT';
+      else if (world.charge.target && world.charge.inRange && !world.charge.behind) status = 'GET BEHIND IT';
     }
     this.set('status', status, (v) => { $('status').textContent = v; });
   }
