@@ -22,7 +22,7 @@ export class World {
     this.bullets = [];
     this.input = { x: 0, y: 0 };
     this.firing = false;
-    this.charge = { target: null, t: 0, inRange: false, behind: false };
+    this.charge = { target: null, t: 0, inRange: false };
   }
 
   // ======================================================== setup
@@ -46,7 +46,7 @@ export class World {
     this.time = 0;
     this.input = { x: 0, y: 0 };
     this.firing = false;
-    this.charge = { target: null, t: 0, inRange: false, behind: false };
+    this.charge = { target: null, t: 0, inRange: false };
 
     if (g.exitTiles.length) {
       let c0 = Infinity, c1 = -Infinity, r0 = Infinity, r1 = -Infinity;
@@ -149,6 +149,7 @@ export class World {
   alert(reason) {
     if (this.alerted) return;
     this.alerted = true;
+    for (const e of this.entities) e.investigating = false;
     this.freezeTimer = config.vision.alertFreeze;
     this.field = null;
     this.emit('alert', reason);
@@ -184,6 +185,21 @@ export class World {
     }
   }
 
+  // Too close: an unaware sentry hears you, stops, and turns a full circle to look.
+  updateHearing() {
+    const p = this.player;
+    if (this.alerted || !p.alive || this.isDisguised()) return;
+    const near = config.morph.range * config.hearing.rangeFrac;
+    for (const e of this.entities) {
+      if (!e.alive || e.investigating || (e.hearCd ?? 0) > 0) continue;
+      if (dist(p, e) - e.radius <= near) {
+        e.investigating = true;
+        e.invLeft = TAU;
+        this.emit('heard');
+      }
+    }
+  }
+
   updateCone(e) {
     e.cone = this.grid.visionCone(e.x, e.y, e.gaze ?? e.angle, (config.vision.fov * DEG) / 2, config.vision.range);
   }
@@ -208,6 +224,7 @@ export class World {
     this.resolveCollisions();
     for (const e of this.entities) if (e.alive) this.updateCone(e);
     this.updateDetection(dt);
+    this.updateHearing();
     this.updateCharge(dt);
     this.updateForm(dt);
     this.updatePlayerFire(dt);
@@ -234,21 +251,21 @@ export class World {
     if (!p.alive || p.form) { c.target = null; c.t = 0; return; } // no charging while morphed
     if (c.target && !c.target.alive) { c.target = null; c.t = 0; }
     const range = config.morph.range;
+    const reach = (e) => dist(p, e) - e.radius <= range
+      && (!config.morph.requireSight || this.grid.canSee(p.x, p.y, e.x, e.y));
     if (!c.target) {
       let best = null, bd = Infinity;
       for (const e of this.entities) {
-        if (!e.alive) continue;
-        const d = dist(p, e) - e.radius;
-        if (d <= range && d < bd) { bd = d; best = e; }
+        if (!e.alive || !reach(e)) continue;
+        const d = dist(p, e);
+        if (d < bd) { bd = d; best = e; }
       }
       if (best) { c.target = best; c.t = 0; }
     }
-    if (!c.target) { c.inRange = c.behind = false; return; }
+    if (!c.target) { c.inRange = false; return; }
     const t = c.target;
-    c.inRange = dist(p, t) - t.radius <= range;
-    const fromTarget = Math.atan2(p.y - t.y, p.x - t.x);
-    c.behind = Math.abs(angleDiff(t.angle, fromTarget)) >= Math.PI - (config.morph.rearArc * DEG) / 2;
-    if (c.inRange && c.behind) {
+    c.inRange = reach(t);
+    if (c.inRange) {
       c.t += dt / config.morph.chargeTime;
     } else {
       c.t = Math.max(0, c.t - dt / config.morph.drainTime);
@@ -340,11 +357,15 @@ export class World {
   updateAI(e, dt) {
     e.flash = Math.max(0, e.flash - dt);
     for (const w of e.weapons) w.cd = Math.max(0, w.cd - dt);
+    e.hearCd = Math.max(0, (e.hearCd ?? 0) - dt);
     if (this.alerted) this.hunt(e, dt);
+    else if (e.investigating) this.investigate(e, dt);
     else if (e.mode === 'patrol') this.patrol(e, dt);
     else this.posted(e, dt);
     // Gaze = where the head (and sight cone) points; the patroller scans side to side.
-    if (e.mode === 'patrol' && !this.alerted) {
+    if (e.investigating) {
+      e.gaze = e.angle;
+    } else if (e.mode === 'patrol' && !this.alerted) {
       const P = config.patrol;
       const want = e.pState === 'turn' ? 0 : 1;
       e.scan = (e.scan ?? 0) + (want - (e.scan ?? 0)) * Math.min(1, dt * 3);
@@ -362,6 +383,16 @@ export class World {
     e.y += (dy / d) * step;
     if (face) e.angle = turnToward(e.angle, Math.atan2(dy, dx), 8 * dt);
     return d - step;
+  }
+
+  investigate(e, dt) {
+    const step = Math.min(e.invLeft, config.hearing.turnRate * dt);
+    e.angle += step;
+    e.invLeft -= step;
+    if (e.invLeft <= 1e-6) {
+      e.investigating = false;
+      e.hearCd = config.hearing.cooldown;
+    }
   }
 
   // Posted sentries stand square to their post; only the head sweeps.

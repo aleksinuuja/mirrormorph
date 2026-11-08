@@ -29,14 +29,20 @@ export const config = {
   },
 
   morph: {
-    range: 2.0,             // tiles from the target's edge
-    rearArc: 120,           // degrees behind the target where charging works
-    chargeTime: 4.0,        // seconds in range + behind to complete the clock
+    range: 1.5,             // tiles from the target's edge
+    chargeTime: 4.0,        // seconds in range to complete the clock
+    requireSight: 1,        // 1 = walls and cover block copying (needs a clear line to the target)
     drainTime: 1.5,         // seconds for a full clock to drain to zero
     formDrainPerSec: 3,     // form HP lost per second while morphed
     contactDps: 3,          // form HP/sec lost while pushing into another robot
     wallContactDps: 0,      // form HP/sec lost while pushing into walls/cover
     revertSearchRadius: 1.5,// how far to look for free space when reverting; none = explode
+  },
+
+  hearing: {
+    rangeFrac: 0.5,         // sentries hear you inside this fraction of the morph range
+    turnRate: 2.0,          // radians/sec while turning a full circle to check
+    cooldown: 1.0,          // seconds before the same sentry can be startled again
   },
 
   ai: {

@@ -51,6 +51,7 @@ export class View {
     }
     this.coneMat = new THREE.MeshBasicMaterial({ color: 0xff1e1e, side: THREE.DoubleSide, depthWrite: false });
     this.coneMat.userData.shared = true;
+    this.qMat = this.makeQuestionMaterial();
     this.particleGeo = new THREE.BoxGeometry(1, 1, 1);
     this.particleGeo.userData.shared = true;
     this.particleMats = new Map();
@@ -68,6 +69,25 @@ export class View {
     this.buildOverlays();
     window.addEventListener('resize', () => this.resize());
     this.resize();
+  }
+
+  makeQuestionMaterial() {
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    const g = c.getContext('2d');
+    g.font = 'bold 104px system-ui, -apple-system, sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.lineWidth = 14;
+    g.strokeStyle = '#06080d';
+    g.strokeText('?', 64, 70);
+    g.fillStyle = '#ffc93a';
+    g.fillText('?', 64, 70);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const m = new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true });
+    m.userData.shared = true;
+    return m;
   }
 
   // ---------- camera ----------
@@ -213,7 +233,7 @@ export class View {
     root.add(group);
     const marker = e.isPlayer ? buildPlayerMarker(e.radius) : buildMarker(e.radius);
     root.add(marker);
-    let bar = null, barFill = null, cone = null;
+    let bar = null, barFill = null, cone = null, qmark = null;
     if (!e.isPlayer) {
       bar = new THREE.Group();
       const w = 0.8;
@@ -225,6 +245,12 @@ export class View {
       bar.position.set(0, 0.05, -(e.radius + 0.3));
       bar.visible = false;
       root.add(bar);
+      qmark = new THREE.Sprite(this.qMat);
+      qmark.scale.setScalar(0.6);
+      qmark.position.set(e.radius + 0.25, 1.3, -(e.radius + 0.25));
+      qmark.renderOrder = 10;
+      qmark.visible = false;
+      root.add(qmark);
 
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(CONE_MAX_TRIS * 9), 3));
@@ -236,7 +262,7 @@ export class View {
     }
     this.entityGroup.add(root);
     this.objs.set(e.id, {
-      root, body: group, mats, rig, marker, bar, barFill, cone,
+      root, body: group, mats, rig, marker, bar, barFill, cone, qmark,
       fac: null, flashing: false, lastX: e.x, lastY: e.y, phase: 0, walk: 0,
     });
   }
@@ -385,6 +411,10 @@ export class View {
       } else {
         // The beam is the tell while they're unaware; the red ring appears once they hunt you.
         o.marker.visible = world.alerted;
+        if (o.qmark) {
+          o.qmark.visible = !!e.investigating && !world.alerted;
+          if (o.qmark.visible) o.qmark.position.y = 1.3 + Math.sin(this.time * 6) * 0.06;
+        }
         const fac = world.factionOf(e);
         if (fac !== o.fac) { o.fac = fac; o.marker.material.color.setHex(FACTION_COLORS[fac]); }
         const frac = e.hp / e.maxHp;
@@ -401,13 +431,11 @@ export class View {
     const range = config.morph.range;
     const showRange = p.alive && !p.form && world.state === 'playing';
     this.rangeLine.visible = showRange;
-    const blocked = !!c.target && c.inRange && !c.behind;
     if (showRange) {
       // Range is measured to a target's edge; draw it for a typical (sentry-sized) target.
       const r = range + config.archetypes.sentry.radius;
       this.rangeLine.position.set(p.x, 0.04, -p.y);
       this.rangeLine.scale.setScalar(r);
-      this.rangeLine.material.color.setHex(blocked ? 0xff5050 : 0x9fd8ff);
       this.rangeLine.material.opacity = c.target ? 0.8 : 0.35;
     }
     const charging = showRange && !!c.target && (c.t > 0 || c.inRange);
@@ -420,9 +448,9 @@ export class View {
         this.sector.geometry = new THREE.CircleGeometry(1, 48, Math.PI / 2 - L, Math.max(L, 0.0001)).rotateX(-Math.PI / 2);
         this.sectorLen = L;
       }
-      const state = c.inRange && c.behind ? 0xbfe8ff : blocked ? 0xff5050 : 0xffa060;
+      const state = c.inRange ? 0xbfe8ff : 0xffa060; // orange = draining
       this.sectorMat.color.setHex(state);
-      this.armMat.color.setHex(c.inRange && c.behind ? 0xffffff : state);
+      this.armMat.color.setHex(c.inRange ? 0xffffff : state);
       this.sector.position.set(p.x, 0.045, -p.y);
       this.sector.scale.setScalar(r);
       this.arm.position.set(p.x, 0.05, -p.y);

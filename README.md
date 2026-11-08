@@ -1,6 +1,6 @@
 # Mirrormorph (prototype, iteration 2: stealth)
 
-Top-down stealth with walking robots. Sneak up behind one of the two patrolling sentries to copy its form, then walk through the guard room disguised as one of them. If a red sight beam touches you undisguised, every sentry is alerted and hunts you.
+Top-down stealth with walking robots. Stay close to one of the two patrolling sentries to copy its form, then walk through the guard room disguised as one of them. If a red sight beam touches you undisguised, every sentry is alerted and hunts you.
 
 Play: https://aleksinuuja.github.io/mirrormorph/ (add `?debug` to open the tuning panel)
 
@@ -18,7 +18,7 @@ To try it on a phone on the same Wi-Fi, run `python3 -m http.server 8765 --bind 
 ## Controls
 
 - **Move:** touch anywhere and hold. A virtual joystick appears under your finger. Holding still keeps walking, and releasing stops. On desktop you can also use WASD or the arrow keys.
-- **Copy a sentry:** stay within range *behind* it (inside its rear 120° arc) until the clock fills. The range circle turns red if you're beside or in front of it.
+- **Copy a sentry:** stay within range (1.5 tiles) until the clock fills. Get too close (half that range) and an unaware sentry hears you: it stops, shows a **?**, and turns a full circle to look before carrying on.
 - **FIRE:** hold to shoot straight ahead, the way you're facing. Space on desktop. Gunfire raises the alarm and blows any disguise.
 
 ## Rules

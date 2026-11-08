@@ -88,7 +88,7 @@ export class UI {
   onEvent(type, data) {
     switch (type) {
       case 'loaded': this.hideBanner(); break;
-      case 'hint': this.toast(data, 2600); break;
+      case 'hint': this.toast(data, 3800); break;
       case 'status': this.toast(data, 2000); break;
       case 'morph': this.toast(`◆ ${data.toUpperCase()}`, 1200); break;
       case 'revert': this.toast('FORM LOST', 1200); break;
@@ -128,7 +128,6 @@ export class UI {
     if (p.alive) {
       if (world.alerted) status = 'ALERT · ALL SENTRIES HUNTING';
       else if (world.isDisguised()) status = `DISGUISED · ${p.arch.label.toUpperCase()}`;
-      else if (world.charge.target && world.charge.inRange && !world.charge.behind) status = 'GET BEHIND IT';
     }
     this.set('status', status, (v) => { $('status').textContent = v; });
   }

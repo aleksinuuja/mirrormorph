@@ -12,8 +12,8 @@
 
 export default {
   name: 'Stealth',
-  blurb: 'Two patrollers, one guard room. Copy a patroller from behind and walk out disguised.',
-  hint: 'Get behind a patroller to copy it',
+  blurb: 'Two patrollers, one guard room. Copy a sentry and walk out disguised.',
+  hint: 'You are mirrormorph. Stay close to target to copy its form.',
 
   map: [
     '#######################',
