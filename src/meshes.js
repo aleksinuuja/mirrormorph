@@ -54,41 +54,70 @@ const builders = {
     const shell = mat(0xd6dde8), dark = mat(0x3a4250), joint = mat(0x5b6576);
     const body = edges(new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.82, 0.85, 8), shell), 0xffffff, 0.35);
     body.position.y = 1.35;
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.58, 8, 5, 0, TAU, 0, Math.PI / 2), shell);
+    const head = new THREE.Group();
     head.position.y = 1.78;
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(0.58, 8, 5, 0, TAU, 0, Math.PI / 2), shell);
     const visor = box(0.22, 0.2, 0.8, mat(0x6ff6ff, { emissive: 0x3fd8ff }));
-    visor.position.set(0.48, 1.98, 0);
+    visor.position.set(0.48, 0.2, 0);
+    head.add(dome, visor);
     const pack = box(0.35, 0.5, 0.8, dark);
     pack.position.set(-0.7, 1.4, 0);
-    torso.add(body, head, visor, pack);
+    torso.add(body, head, pack);
     const legs = [leg(0.36, 0.95, 0.85, 0.24, 0.5, joint, dark), leg(-0.36, 0.95, 0.85, 0.24, 0.5, joint, dark)];
     const arms = [arm(0.9, 1.6, 0.7, 0.2, joint), arm(-0.9, 1.6, 0.7, 0.2, joint)];
     torso.add(...arms);
     g.add(torso, ...legs);
-    return { group: g, rig: { torso, legs, arms } };
+    return { group: g, rig: { torso, legs, arms, head } };
   },
 
-  // Sentry: bulky, armoured, red visor slit, shoulder gun.
+  // Sentry: compact torso, heavy arms, big pauldrons, red visor slit, arm cannon.
   sentry() {
     const g = new THREE.Group();
     const torso = new THREE.Group();
-    const armour = mat(0xb89a64), dark = mat(0x3d3426), joint = mat(0x6b5c40);
-    const body = edges(box(1.2, 0.95, 1.5, armour), 0xffe6b8, 0.4);
-    body.position.y = 1.35;
-    const head = edges(box(0.75, 0.42, 0.85, armour), 0xffe6b8, 0.4);
-    head.position.y = 2.03;
-    const visor = box(0.1, 0.13, 0.72, mat(0xff3030, { emissive: 0xff2020 }));
-    visor.position.set(0.39, 2.06, 0);
-    const gun = box(0.95, 0.2, 0.2, dark);
-    gun.position.set(0.45, 1.6, 0.9);
-    const shoulder = box(0.5, 0.3, 0.35, joint);
-    shoulder.position.set(0.05, 1.65, 0.85);
-    torso.add(body, head, visor, gun, shoulder);
-    const legs = [leg(0.45, 0.95, 0.85, 0.32, 0.6, joint, dark), leg(-0.45, 0.95, 0.85, 0.32, 0.6, joint, dark)];
-    const arms = [arm(-0.9, 1.7, 0.75, 0.24, joint)];
+    const armour = mat(0xb89a64), plate = mat(0xd2b47c), dark = mat(0x3d3426), joint = mat(0x6b5c40);
+    const body = edges(box(0.8, 0.72, 0.9, armour), 0xffe6b8, 0.4);
+    body.position.y = 1.3;
+    const head = new THREE.Group();
+    head.position.y = 1.8;
+    const skull = edges(box(0.5, 0.34, 0.56, armour), 0xffe6b8, 0.4);
+    const visor = box(0.08, 0.1, 0.46, mat(0xff3030, { emissive: 0xff2020 }));
+    visor.position.set(0.26, 0.03, 0);
+    head.add(skull, visor);
+    torso.add(body, head);
+
+    // Chunky arms: upper arm + oversized gauntlet; the right one carries the cannon.
+    const bulkyArm = (z, withGun) => {
+      const pivot = new THREE.Group();
+      pivot.position.set(0, 1.55, z);
+      const upper = box(0.34, 0.45, 0.34, joint);
+      upper.position.y = -0.22;
+      const gauntlet = edges(box(0.5, 0.5, 0.48, armour), 0xffe6b8, 0.35);
+      gauntlet.position.y = -0.68;
+      pivot.add(upper, gauntlet);
+      if (withGun) {
+        const barrel = box(0.55, 0.14, 0.14, dark);
+        barrel.position.set(0.42, -0.72, 0);
+        pivot.add(barrel);
+      }
+      return pivot;
+    };
+    const arms = [bulkyArm(0.72, true), bulkyArm(-0.72, false)];
     torso.add(...arms);
+
+    // Pauldrons: low domes riding on each shoulder.
+    for (const z of [0.72, -0.72]) {
+      const geo = new THREE.SphereGeometry(0.46, 7, 3, 0, TAU, 0, Math.PI / 2);
+      geo.scale(1.15, 0.8, 1.05);
+      const p = edges(new THREE.Mesh(geo, plate), 0xfff0d0, 0.5);
+      p.position.set(0, 1.58, z);
+      const rim = box(0.95, 0.08, 0.55, dark);
+      rim.position.set(0, 1.56, z);
+      torso.add(rim, p);
+    }
+
+    const legs = [leg(0.3, 0.95, 0.85, 0.3, 0.6, joint, dark), leg(-0.3, 0.95, 0.85, 0.3, 0.6, joint, dark)];
     g.add(torso, ...legs);
-    return { group: g, rig: { torso, legs, arms } };
+    return { group: g, rig: { torso, legs, arms, head } };
   },
 };
 
@@ -103,7 +132,8 @@ export function buildBody(shape, radius) {
 }
 
 // Advance a walk cycle. `speed` is world units/sec actually travelled.
-export function animateRig(rig, phase, amount) {
+export function animateRig(rig, phase, amount, headTurn = 0) {
+  if (rig.head) rig.head.rotation.y = headTurn;
   const swing = Math.sin(phase) * 0.6 * amount;
   rig.legs[0].rotation.z = swing;
   rig.legs[1].rotation.z = -swing;

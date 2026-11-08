@@ -384,7 +384,7 @@ export class View {
       const target = Math.min(1, speed / 1.2);
       if (simDt > 0) o.walk += (target - o.walk) * Math.min(1, simDt * 10);
       o.phase += moved * (Math.PI / (e.radius * 1.7));
-      if (o.rig) animateRig(o.rig, o.phase, o.walk);
+      if (o.rig) animateRig(o.rig, o.phase, o.walk, e.gaze != null ? e.gaze - e.angle : 0);
 
       const flashing = e.flash > 0;
       if (flashing !== o.flashing) {

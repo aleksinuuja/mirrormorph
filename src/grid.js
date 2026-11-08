@@ -51,17 +51,19 @@ export class Grid {
         else if (ch === 'S') this.posted.push(ctr);
         else if (ch === 'E') this.exitTiles.push({ c, r });
         else if (ch >= '1' && ch <= '9') this.patrolPoints[ch] = ctr;
-        else if (ch === 'o') this.obstacles.push({ x: c + 0.15, y: H - 1 - r + 0.15, w: 0.7, h: 0.7, kind: 'pillar' });
       }
       // Row runs of walls and slabs become single rects.
       let c = 0;
       while (c < W) {
         const ch = this.rows[r][c];
-        if (ch === '#' || ch === '=') {
+        if (ch === '#' || ch === '=' || ch === 'o') {
           const s = c;
           while (c < W && this.rows[r][c] === ch) c++;
-          if (ch === '#') this.walls.push({ x: s, y: H - 1 - r, w: c - s, h: 1 });
-          else this.obstacles.push({ x: s + 0.05, y: H - 1 - r + 0.2, w: c - s - 0.1, h: 0.6, kind: 'slab' });
+          const n = c - s, y = H - 1 - r;
+          if (ch === '#') this.walls.push({ x: s, y, w: n, h: 1 });
+          else if (ch === '=') this.obstacles.push({ x: s + 0.05, y: y + 0.2, w: n - 0.1, h: 0.6, kind: 'slab' });
+          else if (n === 1) this.obstacles.push({ x: s + 0.15, y: y + 0.15, w: 0.7, h: 0.7, kind: 'pillar' });
+          else this.obstacles.push({ x: s + 0.05, y: y + 0.05, w: n - 0.1, h: 0.9, kind: 'pillar' });
         } else c++;
       }
     }

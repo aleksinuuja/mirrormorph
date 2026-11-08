@@ -1,7 +1,7 @@
 // The stealth level. Edit the map freely; everything is read from it.
 //
 //   #  wall               .  floor
-//   o  pillar (cover)     =  slab (long cover; a run of = is one slab)
+//   o  pillar (cover; a run like oo is one wide block)   =  slab (long low cover)
 //   P  player start       E  exit tiles
 //   S  posted sentry (settings in `posted`, in reading order: left→right, top→bottom)
 //   1 2  patrol endpoints: one sentry walks 1 → 2 → 1 …
@@ -38,10 +38,10 @@ export default {
     '###..#####################........#',
     '###..####.........................#',
     '###..####.........................#',
-    '###..####..o..o..o..o..o..o.......#',
+    '###..####.ooo.ooo.ooo.ooo.ooo.....#',
     '###.......1.....................2.#',
     '###...............................#',
-    '#########...o..o..o..o..o...===...#',
+    '#########..ooo.ooo.ooo.ooo..===...#',
     '#########.........................#',
     '#########.........................#',
     '###################################',

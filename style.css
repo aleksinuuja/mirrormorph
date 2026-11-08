@@ -46,7 +46,7 @@ body.timestop #game { filter: saturate(0.3) brightness(0.8) contrast(1.1); }
 .hud-top {
   position: absolute;
   top: 0; left: 0; right: 0;
-  padding: calc(env(safe-area-inset-top) + 8px) 10px 14px;
+  padding: calc(env(safe-area-inset-top) + 8px) calc(env(safe-area-inset-right) + 10px) 14px calc(env(safe-area-inset-left) + 10px);
   display: flex;
   gap: 8px;
   align-items: center;
@@ -116,7 +116,7 @@ body.timestop #timestop-hint { display: block; }
 
 .fire-btn {
   position: absolute;
-  right: 18px;
+  right: calc(env(safe-area-inset-right) + 18px);
   bottom: calc(env(safe-area-inset-bottom) + 22px);
   width: 78px; height: 78px;
   border-radius: 50%;
@@ -260,3 +260,15 @@ body.timestop #timestop-hint { display: block; }
 @keyframes alarm { 0% { opacity: 1; } 100% { opacity: 0; } }
 body.alerted #status { color: var(--red); }
 body.alerted .hud-top { box-shadow: inset 0 3px 0 var(--red); }
+
+#ios-hint {
+  max-width: 340px;
+  margin: 4px 0 0;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--accent);
+  text-align: center;
+}

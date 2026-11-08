@@ -21,13 +21,15 @@ export const config = {
   },
 
   patrol: {
-    speedMult: 0.6,         // patrol walking speed as a fraction of the archetype's speed
+    speedMult: 0.4,         // patrol walking speed as a fraction of the archetype's speed
+    scanArc: 60,            // degrees the patroller's head sweeps side to side while walking
+    scanPeriod: 4,          // seconds for one full left-right-left scan
     turnRate: 1.2,          // radians/sec when turning around at a patrol end
     endPause: 0.5,          // seconds standing still after turning
   },
 
   morph: {
-    range: 1.5,             // tiles from the target's edge
+    range: 2.0,             // tiles from the target's edge
     rearArc: 120,           // degrees behind the target where charging works
     chargeTime: 2.0,        // seconds in range + behind to complete the clock
     drainTime: 1.5,         // seconds for a full clock to drain to zero
@@ -45,6 +47,7 @@ export const config = {
     fireRateMult: 0.6,      // AI fires at this fraction of the archetype's rate (player gets full)
     aimError: 0.15,         // radians of random aim error for AI shots
     turnRate: 4.0,          // radians/sec AI turns while hunting
+    huntSpeedMult: 0.6,     // alerted sentries move at this fraction of the archetype's speed
     huntShootRange: 7,      // alerted sentries shoot when they can see you within this range
     pathRefresh: 0.4,       // seconds between path updates while hunting
   },

@@ -183,7 +183,7 @@ export class World {
       const py = i < 0 ? p.y : p.y + Math.sin((i / n) * TAU) * p.radius * 0.95;
       const dx = px - e.x, dy = py - e.y;
       if (dx * dx + dy * dy > range * range) continue;
-      if (Math.abs(angleDiff(e.angle, Math.atan2(dy, dx))) > half) continue;
+      if (Math.abs(angleDiff(e.gaze ?? e.angle, Math.atan2(dy, dx))) > half) continue;
       if (this.grid.canSee(e.x, e.y, px, py)) return true;
     }
     return false;
@@ -204,7 +204,7 @@ export class World {
   }
 
   updateCone(e) {
-    e.cone = this.grid.visionCone(e.x, e.y, e.angle, (config.vision.fov * DEG) / 2, config.vision.range);
+    e.cone = this.grid.visionCone(e.x, e.y, e.gaze ?? e.angle, (config.vision.fov * DEG) / 2, config.vision.range);
   }
 
   // ======================================================== main update
@@ -388,6 +388,15 @@ export class World {
     if (this.alerted) this.hunt(e, dt);
     else if (e.mode === 'patrol') this.patrol(e, dt);
     else this.posted(e, dt);
+    // Gaze = where the head (and sight cone) points; the patroller scans side to side.
+    if (e.mode === 'patrol' && !this.alerted) {
+      const P = config.patrol;
+      const want = e.pState === 'turn' ? 0 : 1;
+      e.scan = (e.scan ?? 0) + (want - (e.scan ?? 0)) * Math.min(1, dt * 3);
+      e.gaze = e.angle + e.scan * ((P.scanArc * DEG) / 2) * Math.sin((this.time * TAU) / P.scanPeriod);
+    } else {
+      e.gaze = e.angle;
+    }
   }
 
   moveToward(e, gx, gy, speed, dt, face = true) {
@@ -450,8 +459,9 @@ export class World {
       let my = uy * radial + ux * e.strafeDir * 0.6;
       const m = Math.hypot(mx, my);
       if (m > 1) { mx /= m; my /= m; }
-      e.x += mx * e.speed * dt;
-      e.y += my * e.speed * dt;
+      const huntSpeed = e.speed * config.ai.huntSpeedMult;
+      e.x += mx * huntSpeed * dt;
+      e.y += my * huntSpeed * dt;
       const aim = Math.atan2(dy, dx);
       e.angle = turnToward(e.angle, aim, config.ai.turnRate * dt);
       if (Math.abs(angleDiff(e.angle, aim)) < 0.3) {
@@ -481,9 +491,9 @@ export class World {
     }
     if (best) {
       const ctr = g.center(best.nc, best.nr);
-      this.moveToward(e, ctr.x, ctr.y, e.speed, dt);
+      this.moveToward(e, ctr.x, ctr.y, e.speed * config.ai.huntSpeedMult, dt);
     } else {
-      this.moveToward(e, p.x, p.y, e.speed, dt);
+      this.moveToward(e, p.x, p.y, e.speed * config.ai.huntSpeedMult, dt);
     }
   }
 

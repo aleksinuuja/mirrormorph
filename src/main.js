@@ -26,8 +26,25 @@ const ui = new UI({
 });
 
 function play() {
+  goFullscreen();
   ui.showHud();
   world.load(level);
+}
+
+// Fullscreen where the browser allows it (Android, iPad, desktop). iPhone Safari
+// doesn't let pages go fullscreen; there the Home Screen web app is the way.
+function goFullscreen() {
+  const el = document.documentElement;
+  if (document.fullscreenElement || document.webkitFullscreenElement) return;
+  try {
+    if (el.requestFullscreen) el.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  } catch { /* not allowed here */ }
+}
+
+const standalone = navigator.standalone || matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches;
+if (!standalone && /iPhone|iPod/.test(navigator.userAgent)) {
+  document.getElementById('ios-hint').classList.remove('hidden');
 }
 
 function menu() {
