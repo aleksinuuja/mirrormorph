@@ -20,7 +20,7 @@ To try it on a phone on the same Wi-Fi, run `python3 -m http.server 8765 --bind 
 - **Move:** touch anywhere and hold. A virtual joystick appears under your finger. Holding still keeps walking, and releasing stops. On desktop you can also use WASD or the arrow keys.
 - **Copy a sentry:** stay within range (1.5 tiles) until the clock fills. Get too close (half that range) and an unaware sentry hears you: it stops, shows a **?**, and turns a full circle to look before carrying on.
 - **FIRE (droid form):** hold to shoot straight ahead, the way you're facing. Space on desktop.
-- **FIRE (sentry form, railgun):** the first press stops you and enters aim mode, where the stick turns your aim. The second press fires a beam that one-shots a sentry. Pressing while it's still recharging exits aim mode.
+- **FIRE (sentry form, railgun):** the first press stops you and enters aim mode, where the stick turns your aim. The second press fires a beam that pierces everything in line up to a wall, one-shotting each sentry it passes through. Pressing while it's still recharging exits aim mode.
 - Any shot raises the alarm and blows your disguise.
 
 ## Rules

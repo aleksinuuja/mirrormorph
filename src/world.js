@@ -565,34 +565,35 @@ export class World {
     }
   }
 
-  // Hitscan beam: travels until a wall/cover or the first robot it may hit.
-  // The player's beam hits sentries; a sentry's beam only hits the player.
+  // Hitscan beam: travels until a wall or cover and pierces every robot on the way.
+  // No friendly fire: the player's beam hits sentries; a sentry's beam only hits the player.
   fireRail(src, w, angle) {
     const byPlayer = src.isPlayer;
     if (byPlayer) this.alert(this.isDisguised() ? 'Cover blown' : 'Shots fired');
     const dx = Math.cos(angle), dy = Math.sin(angle);
-    let t = this.grid.raycast(src.x, src.y, dx, dy, w.range);
-    let hit = null;
+    const t = this.grid.raycast(src.x, src.y, dx, dy, w.range);
+    const hits = [];
     const targets = byPlayer ? this.entities : [this.player];
     for (const e of targets) {
       if (!e.alive || e === src) continue;
       const ox = e.x - src.x, oy = e.y - src.y;
       const s = ox * dx + oy * dy;
-      if (s < 0 || s > t + e.radius) continue;
+      if (s < 0) continue;
       const perp2 = ox * ox + oy * oy - s * s;
       if (perp2 > e.radius * e.radius) continue;
       const at = s - Math.sqrt(e.radius * e.radius - perp2);
-      if (at < t) { t = Math.max(0, at); hit = e; }
+      if (at <= t) hits.push({ e, at });
     }
     const x0 = src.x + dx * src.radius * 0.8, y0 = src.y + dy * src.radius * 0.8;
     const x1 = src.x + dx * t, y1 = src.y + dy * t;
     this.view.railBeam(x0, y0, x1, y1, byPlayer);
     this.view.burst(x1, y1, byPlayer ? 0x9fe8ff : 0xff6040, 10, 3);
-    if (hit) {
-      if (hit.isPlayer) this.damagePlayer(w.damage);
-      else this.damage(hit, w.damage);
+    for (const { e, at } of hits) {
+      this.view.burst(src.x + dx * at, src.y + dy * at, byPlayer ? 0x9fe8ff : 0xff6040, 8, 3);
+      if (e.isPlayer) this.damagePlayer(w.damage);
+      else this.damage(e, w.damage);
     }
-    this.emit('rail', { byPlayer, hit: !!hit });
+    this.emit('rail', { byPlayer, hits: hits.length });
   }
 
   updateBullets(dt) {
