@@ -66,11 +66,13 @@ export class World {
         phase: s.phase,
       });
     });
-    const pts = Object.keys(g.patrolPoints).sort().map((k) => g.patrolPoints[k]);
-    if (pts.length >= 2) {
-      this.spawnSentry(pts[0], {
-        mode: 'patrol', patrol: pts, pIdx: 1, pState: 'walk', pTimer: 0,
-        angle: Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x),
+    for (let d = 1; d <= 8; d += 2) {
+      const a = g.patrolPoints[String(d)], b = g.patrolPoints[String(d + 1)];
+      if (!a || !b) continue;
+      this.spawnSentry(a, {
+        mode: 'patrol', patrol: [a, b], pIdx: 1, pState: 'walk', pTimer: 0,
+        angle: Math.atan2(b.y - a.y, b.x - a.x),
+        scanPhase: d, // patrollers scan out of sync
       });
     }
     this.spawnPlayer(g.start || g.center(1, 1));
@@ -393,7 +395,7 @@ export class World {
       const P = config.patrol;
       const want = e.pState === 'turn' ? 0 : 1;
       e.scan = (e.scan ?? 0) + (want - (e.scan ?? 0)) * Math.min(1, dt * 3);
-      e.gaze = e.angle + e.scan * ((P.scanArc * DEG) / 2) * Math.sin((this.time * TAU) / P.scanPeriod);
+      e.gaze = e.angle + e.scan * ((P.scanArc * DEG) / 2) * Math.sin((this.time * TAU) / P.scanPeriod + (e.scanPhase || 0));
     } else {
       e.gaze = e.angle;
     }

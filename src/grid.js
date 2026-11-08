@@ -56,15 +56,37 @@ export class Grid {
       let c = 0;
       while (c < W) {
         const ch = this.rows[r][c];
-        if (ch === '#' || ch === '=' || ch === 'o') {
+        if (ch === '#' || ch === '=') {
           const s = c;
           while (c < W && this.rows[r][c] === ch) c++;
           const n = c - s, y = H - 1 - r;
           if (ch === '#') this.walls.push({ x: s, y, w: n, h: 1 });
-          else if (ch === '=') this.obstacles.push({ x: s + 0.05, y: y + 0.2, w: n - 0.1, h: 0.6, kind: 'slab' });
-          else if (n === 1) this.obstacles.push({ x: s + 0.15, y: y + 0.15, w: 0.7, h: 0.7, kind: 'pillar' });
-          else this.obstacles.push({ x: s + 0.05, y: y + 0.05, w: n - 0.1, h: 0.9, kind: 'pillar' });
+          else this.obstacles.push({ x: s + 0.05, y: y + 0.2, w: n - 0.1, h: 0.6, kind: 'slab' });
         } else c++;
+      }
+    }
+    // Blocks: each connected group of 'o' tiles becomes one solid block (its bounding box).
+    // A 1-tile-thin side is 0.8 thick; longer sides fill their tiles with a small inset.
+    const seen = new Uint8Array(W * H);
+    for (let r = 0; r < H; r++) {
+      for (let c = 0; c < W; c++) {
+        if (this.rows[r][c] !== 'o' || seen[r * W + c]) continue;
+        let c0 = c, c1 = c, r0 = r, r1 = r;
+        const stack = [[c, r]];
+        seen[r * W + c] = 1;
+        while (stack.length) {
+          const [x, y] = stack.pop();
+          c0 = Math.min(c0, x); c1 = Math.max(c1, x); r0 = Math.min(r0, y); r1 = Math.max(r1, y);
+          for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+            const nx = x + dx, ny = y + dy;
+            if (nx < 0 || ny < 0 || nx >= W || ny >= H || seen[ny * W + nx] || this.rows[ny][nx] !== 'o') continue;
+            seen[ny * W + nx] = 1;
+            stack.push([nx, ny]);
+          }
+        }
+        const nw = c1 - c0 + 1, nh = r1 - r0 + 1;
+        const iw = nw === 1 ? 0.1 : 0.05, ih = nh === 1 ? 0.1 : 0.05;
+        this.obstacles.push({ x: c0 + iw, y: H - 1 - r1 + ih, w: nw - 2 * iw, h: nh - 2 * ih, kind: 'pillar' });
       }
     }
     this.solids = this.walls.concat(this.obstacles);

@@ -122,14 +122,8 @@ export class View {
     const floorCells = [], wallCells = [];
     for (let r = 0; r < H; r++) {
       for (let c = 0; c < W; c++) {
-        if (grid.isWall(c, r)) {
-          let near = false;
-          for (let dr = -1; dr <= 1 && !near; dr++) for (let dc = -1; dc <= 1; dc++) {
-            const nc = c + dc, nr = r + dr;
-            if (nc >= 0 && nr >= 0 && nc < W && nr < H && !grid.isWall(nc, nr)) { near = true; break; }
-          }
-          if (near) wallCells.push([c, r]);
-        } else floorCells.push([c, r]);
+        if (grid.isWall(c, r)) wallCells.push([c, r]);
+        else floorCells.push([c, r]);
       }
     }
     const m4 = new THREE.Matrix4();
@@ -363,13 +357,8 @@ export class View {
     const simDt = frozen ? 0 : dt;
     const p = world.player;
 
-    // Vision cones: solid red; pulse brighter once the alarm is up.
-    if (world.alerted) {
-      const k = 0.5 + 0.5 * Math.sin(this.time * 10);
-      this.coneMat.color.setRGB(1, 0.12 + 0.3 * k, 0.12 + 0.3 * k);
-    } else {
-      this.coneMat.color.setHex(0xff1e1e);
-    }
+    // Vision cones show only while the sentries are unaware; once alerted they hunt instead.
+    this.coneGroup.visible = !world.alerted;
 
     for (const e of world.entities.concat([p])) {
       const o = this.objs.get(e.id);
@@ -394,12 +383,14 @@ export class View {
       if (e.isPlayer) {
         o.marker.rotation.y = this.time * 0.8;
       } else {
+        // The beam is the tell while they're unaware; the red ring appears once they hunt you.
+        o.marker.visible = world.alerted;
         const fac = world.factionOf(e);
         if (fac !== o.fac) { o.fac = fac; o.marker.material.color.setHex(FACTION_COLORS[fac]); }
         const frac = e.hp / e.maxHp;
         o.bar.visible = frac < 0.999 && frac > 0;
         if (o.bar.visible) o.barFill.scale.x = Math.max(0.001, frac);
-        this.writeCone(o, e);
+        if (!world.alerted) this.writeCone(o, e);
       }
     }
 

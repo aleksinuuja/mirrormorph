@@ -1,6 +1,6 @@
 # Mirrormorph (prototype, iteration 2: stealth)
 
-Top-down stealth with walking robots. Sneak up behind a sentry to copy its form, then walk through the guard room disguised as one of them. If a red sight beam touches you undisguised, every sentry is alerted and hunts you.
+Top-down stealth with walking robots. Sneak up behind one of the two patrolling sentries to copy its form, then walk through the guard room disguised as one of them. If a red sight beam touches you undisguised, every sentry is alerted and hunts you.
 
 Play: https://aleksinuuja.github.io/mirrormorph/ (add `?debug` to open the tuning panel)
 
@@ -23,7 +23,8 @@ To try it on a phone on the same Wi-Fi, run `python3 -m http.server 8765 --bind 
 
 ## Rules
 
-- Sentries see in a narrow cone (15°, 8 tiles) that is clipped exactly by walls and cover.
+- Sentries see in a narrow cone (15°, 8 tiles) that is clipped exactly by walls and cover. Patrollers scan ±30° as they walk.
+- While the sentries are unaware, the beam is their only marker. After the alarm the beams vanish and each sentry gets a red ring.
 - If any part of you is in a cone while undisguised, the alarm goes off.
 - Once alerted, all sentries hunt you through the maze for the rest of the attempt. Dying restarts the level.
 - A copied form drains over time. Bumping into robots drains it faster.
@@ -32,7 +33,7 @@ To try it on a phone on the same Wi-Fi, run `python3 -m http.server 8765 --bind 
 
 | Path | What |
 |---|---|
-| `src/level.js` | **The map** as ASCII (legend at the top) plus posted-sentry sweep settings |
+| `src/level.js` | **The map** as ASCII (legend at the top: blocks, patrol pairs 1–2, 3–4, …) plus posted-sentry sweep settings |
 | `src/config.js` | **All tunable values**: vision, patrol, morph, AI, controls, camera, robot stats |
 | `src/grid.js` | Map parsing, collision rects, line of sight, vision-cone geometry, path distance field |
 | `src/world.js` | Game logic: detection, alert, morphing, firing, sentry AI, collisions |
