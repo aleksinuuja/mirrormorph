@@ -50,7 +50,7 @@ export const config = {
     aimError: 0.15,         // radians of random aim error for AI shots
     turnRate: 4.0,          // radians/sec AI turns while hunting
     huntSpeedMult: 0.6,     // alerted sentries move at this fraction of the archetype's speed
-    huntShootRange: 7,      // alerted sentries shoot when they can see you within this range
+    huntShootRange: 10,     // alerted sentries start aiming when they can see you within this range
     pathRefresh: 0.4,       // seconds between path updates while hunting
   },
 
@@ -71,13 +71,16 @@ export const config = {
   archetypes: {
     base: {
       label: 'Mirror', shape: 'droid',
-      radius: 0.32, hp: 20, speed: 3.6, mass: 1,
+      radius: 0.32, hp: 40, speed: 3.6, mass: 1,
       weapons: [{ pattern: 'single', rate: 1, damage: 5, bulletSpeed: 10 }],
     },
     sentry: {
       label: 'Sentry', shape: 'sentry',
       radius: 0.4, hp: 30, speed: 2.6, mass: 4, preferredRange: 4,
-      weapons: [{ pattern: 'single', rate: 1.2, damage: 2, bulletSpeed: 8 }],
+      // Railgun: sentries aim (tracking) for aimTime, freeze for lockDelay, then fire.
+      // The player (in sentry form) fires on the second FIRE press. 30 dmg: one-shots a
+      // sentry, two hits kill the 40 HP hero.
+      weapons: [{ kind: 'rail', damage: 30, aimTime: 1.5, lockDelay: 0.35, cooldown: 1.5, range: 18 }],
     },
   },
 };

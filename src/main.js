@@ -20,7 +20,8 @@ const ui = new UI({
   level,
   onPlay: play,
   onMenu: menu,
-  onFire: (on) => world.setFiring(on),
+  onFirePress: () => world.firePress(),
+  onFireRelease: () => world.fireRelease(),
   onRestart: () => { if (world.room) world.load(world.room); },
   onToggleDebug: () => debugEl.classList.toggle('hidden'),
 });
@@ -80,16 +81,16 @@ window.addEventListener('keydown', (ev) => {
   if (ev.target instanceof HTMLInputElement) return;
   if (ev.code === 'Space') {
     ev.preventDefault();
-    if (world.room) world.setFiring(true);
+    if (world.room && !ev.repeat) world.firePress();
     return;
   }
   keys.add(ev.code);
 });
 window.addEventListener('keyup', (ev) => {
-  if (ev.code === 'Space') world.setFiring(false);
+  if (ev.code === 'Space') world.fireRelease();
   keys.delete(ev.code);
 });
-window.addEventListener('blur', () => { keys.clear(); world.setFiring(false); });
+window.addEventListener('blur', () => { keys.clear(); world.fireRelease(); });
 
 function readInput() {
   if (stick.active) return [stick.x, stick.y];

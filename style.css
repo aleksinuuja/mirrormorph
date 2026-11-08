@@ -271,3 +271,9 @@ body.alerted .hud-top { box-shadow: inset 0 3px 0 var(--red); }
   color: var(--accent);
   text-align: center;
 }
+
+/* Railgun states on the FIRE button */
+.fire-btn.rail { border-color: #3fd8ff; }
+.fire-btn.aiming { border-color: #9fe8ff; background: rgba(20, 60, 80, 0.85); color: #dff8ff; animation: pulse 0.9s ease-in-out infinite; }
+.fire-btn.cooling { opacity: 0.55; }
+@keyframes pulse { 50% { transform: scale(1.08); } }

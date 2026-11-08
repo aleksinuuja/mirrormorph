@@ -19,7 +19,9 @@ To try it on a phone on the same Wi-Fi, run `python3 -m http.server 8765 --bind 
 
 - **Move:** touch anywhere and hold. A virtual joystick appears under your finger. Holding still keeps walking, and releasing stops. On desktop you can also use WASD or the arrow keys.
 - **Copy a sentry:** stay within range (1.5 tiles) until the clock fills. Get too close (half that range) and an unaware sentry hears you: it stops, shows a **?**, and turns a full circle to look before carrying on.
-- **FIRE:** hold to shoot straight ahead, the way you're facing. Space on desktop. Gunfire raises the alarm and blows any disguise.
+- **FIRE (droid form):** hold to shoot straight ahead, the way you're facing. Space on desktop.
+- **FIRE (sentry form, railgun):** the first press stops you and enters aim mode, where the stick turns your aim. The second press fires a beam that one-shots a sentry. Pressing while it's still recharging exits aim mode.
+- Any shot raises the alarm and blows your disguise.
 
 ## Rules
 
@@ -27,6 +29,7 @@ To try it on a phone on the same Wi-Fi, run `python3 -m http.server 8765 --bind 
 - While the sentries are unaware, the beam is their only marker. After the alarm the beams vanish and each sentry gets a red ring.
 - If any part of you is in a cone while undisguised, the alarm goes off.
 - Once alerted, all sentries hunt you through the maze for the rest of the attempt. Dying restarts the level.
+- Sentry railguns: a red line tracks you for 1.5 s, then it locks for 0.35 s (it flickers and stops following you), then the beam fires. Sidestep when it locks. Each hit does 30 damage, so two hits kill your 40-HP hull.
 - A copied form drains fast (3 HP/s, so a sentry disguise lasts about 10 s). Bumping into robots drains it faster. The tight route is intended: copy the hall patroller near the corridor and go.
 
 ## Files

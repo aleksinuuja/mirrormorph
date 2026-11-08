@@ -52,6 +52,8 @@ export class View {
     this.coneMat = new THREE.MeshBasicMaterial({ color: 0xff1e1e, side: THREE.DoubleSide, depthWrite: false });
     this.coneMat.userData.shared = true;
     this.qMat = this.makeQuestionMaterial();
+    this.quadGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2).translate(0.5, 0, 0); // from origin along +x
+    this.quadGeo.userData.shared = true;
     this.particleGeo = new THREE.BoxGeometry(1, 1, 1);
     this.particleGeo.userData.shared = true;
     this.particleMats = new Map();
@@ -128,7 +130,7 @@ export class View {
     for (const o of this.objs.values()) this.disposeObj(o);
     this.objs.clear();
     for (const m of [...this.bulletGroup.children]) this.bulletGroup.remove(m);
-    for (const f of this.fx) { this.fxGroup.remove(f.m); if (f.kind === 'r') disposeTree(f.m); }
+    for (const f of this.fx) { this.fxGroup.remove(f.m); if (f.kind === 'r') disposeTree(f.m); else if (f.kind === 'b') f.m.material.dispose(); }
     this.fx = [];
     this.camSnap = true;
   }
@@ -260,8 +262,16 @@ export class View {
       cone.renderOrder = 1;
       this.coneGroup.add(cone);
     }
+    // Railgun aim line (shown while aiming); starts at the robot, length set each frame.
+    const aim = new THREE.Mesh(this.quadGeo, new THREE.MeshBasicMaterial({
+      color: e.isPlayer ? 0x9fe8ff : 0xff3030, transparent: true, opacity: 0.7, depthWrite: false,
+    }));
+    aim.visible = false;
+    aim.renderOrder = 6;
+    this.overlayGroup.add(aim);
     this.entityGroup.add(root);
     this.objs.set(e.id, {
+      aim,
       root, body: group, mats, rig, marker, bar, barFill, cone, qmark,
       fac: null, flashing: false, lastX: e.x, lastY: e.y, phase: 0, walk: 0,
     });
@@ -283,6 +293,7 @@ export class View {
   disposeObj(o) {
     this.entityGroup.remove(o.root);
     disposeTree(o.root);
+    if (o.aim) { this.overlayGroup.remove(o.aim); o.aim.material.dispose(); }
     if (o.cone) { this.coneGroup.remove(o.cone); o.cone.geometry.dispose(); }
   }
 
@@ -350,6 +361,21 @@ export class View {
     this.fx.push({ kind: 'r', m, life: 0.5, max: 0.5, maxR });
   }
 
+  // Railgun shot: a bright core and a wide glow along the line, fading fast.
+  railBeam(x0, y0, x1, y1, byPlayer) {
+    const len = Math.hypot(x1 - x0, y1 - y0);
+    const ang = Math.atan2(y1 - y0, x1 - x0);
+    for (const [w, color, op] of [[0.4, byPlayer ? 0x3fd8ff : 0xff2a2a, 0.55], [0.1, 0xffffff, 1]]) {
+      const m = new THREE.Mesh(this.quadGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: op, depthWrite: false }));
+      m.position.set(x0, 0.62, -y0);
+      m.rotation.y = ang;
+      m.scale.set(len, 1, w);
+      m.renderOrder = 7;
+      this.fxGroup.add(m);
+      this.fx.push({ kind: 'b', m, life: 0.35, max: 0.35, w, op });
+    }
+  }
+
   updateFx(dt) {
     for (const f of this.fx) {
       f.life -= dt;
@@ -362,6 +388,9 @@ export class View {
         if (f.m.position.y < 0.04) { f.m.position.y = 0.04; f.vy *= -0.4; f.vx *= 0.6; f.vz *= 0.6; }
         f.m.rotation.x += 8 * dt; f.m.rotation.y += 6 * dt;
         f.m.scale.setScalar(f.s * k);
+      } else if (f.kind === 'b') {
+        f.m.scale.z = f.w * (0.4 + 0.6 * k);
+        f.m.material.opacity = f.op * k;
       } else {
         f.m.scale.setScalar(0.2 + (1 - k) * f.maxR);
         f.m.material.opacity = 0.9 * k;
@@ -370,7 +399,7 @@ export class View {
     const alive = [];
     for (const f of this.fx) {
       if (f.life > 0) alive.push(f);
-      else { this.fxGroup.remove(f.m); if (f.kind === 'r') disposeTree(f.m); }
+      else { this.fxGroup.remove(f.m); if (f.kind === 'r') disposeTree(f.m); else if (f.kind === 'b') f.m.material.dispose(); }
     }
     this.fx = alive;
   }
@@ -425,6 +454,39 @@ export class View {
     }
 
     for (const b of world.bullets) if (b.mesh) b.mesh.position.set(b.x, 0.55, -b.y);
+
+    // Railgun aim lines: sentries while aiming/locked (lock blinks), the player in aim mode.
+    for (const e of world.entities.concat([p])) {
+      const o = this.objs.get(e.id);
+      if (!o || !o.aim) continue;
+      const w = e.weapons?.[0];
+      let show = false, ang = e.angle, blink = false;
+      if (e.isPlayer) show = world.aiming && e.alive;
+      else if (world.alerted && e.rail && (e.rail.state === 'aim' || e.rail.state === 'lock')) {
+        show = true;
+        ang = e.rail.angle;
+        blink = e.rail.state === 'lock';
+      }
+      o.aim.visible = show;
+      if (!show) continue;
+      const dx = Math.cos(ang), dy = Math.sin(ang);
+      const len = this.level ? this.level.raycast(e.x, e.y, dx, dy, w?.range ?? 18) : 10;
+      o.aim.position.set(e.x, 0.6, -e.y);
+      o.aim.rotation.y = ang;
+      if (e.isPlayer) {
+        const ready = !w || w.cd <= 0;
+        o.aim.scale.set(len, 1, 0.05);
+        o.aim.material.opacity = ready ? 0.85 : 0.3;
+      } else if (blink) {
+        o.aim.scale.set(len, 1, 0.09);
+        o.aim.material.color.setHex(Math.sin(this.time * 60) > 0 ? 0xffffff : 0xff2020);
+        o.aim.material.opacity = 1;
+      } else {
+        o.aim.scale.set(len, 1, 0.035);
+        o.aim.material.color.setHex(0xff3030);
+        o.aim.material.opacity = 0.75;
+      }
+    }
 
     // Morph range + charge clock
     const c = world.charge;

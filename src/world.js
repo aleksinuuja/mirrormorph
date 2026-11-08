@@ -11,7 +11,7 @@ let nextId = 1;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const turnToward = (cur, target, maxStep) => cur + clamp(angleDiff(cur, target), -maxStep, maxStep);
-const cloneWeapons = (ws, randomCd = false) => (ws || []).map((w) => ({ ...w, cd: randomCd ? Math.random() / w.rate : 0 }));
+const cloneWeapons = (ws, randomCd = false) => (ws || []).map((w) => ({ ...w, cd: randomCd ? Math.random() / (w.rate || 1) : 0 }));
 
 export class World {
   constructor(view, emit) {
@@ -22,6 +22,7 @@ export class World {
     this.bullets = [];
     this.input = { x: 0, y: 0 };
     this.firing = false;
+    this.aiming = false;
     this.charge = { target: null, t: 0, inRange: false };
   }
 
@@ -46,6 +47,7 @@ export class World {
     this.time = 0;
     this.input = { x: 0, y: 0 };
     this.firing = false;
+    this.aiming = false;
     this.charge = { target: null, t: 0, inRange: false };
 
     if (g.exitTiles.length) {
@@ -129,9 +131,26 @@ export class World {
     return this.state === 'playing' && this.player.alive && this.player.weapons.length > 0;
   }
 
-  // Fire button held down: shoot straight ahead at the weapon's rate.
-  setFiring(on) {
-    this.firing = !!on;
+  get weapon() {
+    return this.player?.weapons[0] || null;
+  }
+
+  // FIRE pressed. Guns: hold to shoot straight ahead.
+  // Railgun: first press stops you and enters aim mode (the stick aims);
+  // second press shoots. Pressing while it's still recharging just leaves aim mode.
+  firePress() {
+    const p = this.player, w = this.weapon;
+    if (!w || !p.alive || this.state !== 'playing') return;
+    if (w.kind !== 'rail') { this.firing = true; return; }
+    if (!this.aiming) { this.aiming = true; return; }
+    this.aiming = false;
+    if (w.cd > 0) return;
+    w.cd = w.cooldown;
+    this.fireRail(p, w, p.angle);
+  }
+
+  fireRelease() {
+    this.firing = false;
   }
 
   // ======================================================== factions & stealth
@@ -239,6 +258,10 @@ export class World {
     if (!p.alive) return;
     const { x: ix, y: iy } = this.input;
     const m = Math.hypot(ix, iy);
+    if (this.aiming) {
+      if (m > 0.2) p.angle = turnToward(p.angle, Math.atan2(iy, ix), 6 * dt);
+      return;
+    }
     if (p.speed > 0 && m > 0) {
       p.x += ix * p.speed * dt;
       p.y += iy * p.speed * dt;
@@ -289,6 +312,8 @@ export class World {
     p.angle = t.angle;
     this.charge.target = null;
     this.charge.t = 0;
+    this.aiming = false;
+    this.firing = false;
     this.view.setEntityShape(p);
     this.view.ringFx(p.x, p.y, 0xffffff, 2.2);
     this.view.burst(p.x, p.y, 0xbfe8ff, 10, 2.5);
@@ -319,6 +344,7 @@ export class World {
     p.mass = a.mass ?? 1;
     p.weapons = cloneWeapons(a.weapons);
     p.formHp = 0;
+    this.aiming = false;
     this.view.setEntityShape(p);
     const spot = this.findFree(p.x, p.y, p.radius, config.morph.revertSearchRadius);
     if (!spot) { this.killPlayer('No room to revert'); return; }
@@ -333,7 +359,7 @@ export class World {
     for (const w of p.weapons) w.cd = Math.max(0, w.cd - dt);
     if (!this.firing || !p.alive) return;
     for (const w of p.weapons) {
-      if (w.cd > 0) continue;
+      if (w.cd > 0 || w.kind === 'rail') continue;
       w.cd = 1 / w.rate;
       this.alert(this.isDisguised() ? 'Cover blown' : 'Shots fired'); // gunfire is never quiet
       this.shoot(p, w, p.angle, 'player');
@@ -436,6 +462,31 @@ export class World {
     if (!p.alive) return;
     const d = dist(e, p);
     const los = d < config.ai.huntShootRange && this.grid.canSee(e.x, e.y, p.x, p.y);
+    const w = e.weapons[0];
+    if (w && w.kind === 'rail') {
+      // Railgun: aim (tracks you) → lock (aim freezes, short beat) → boom.
+      const R = e.rail || (e.rail = { state: 'idle', t: 0, angle: e.angle });
+      if (R.state === 'aim') {
+        if (!los) R.state = 'idle';
+        else {
+          e.angle = turnToward(e.angle, Math.atan2(p.y - e.y, p.x - e.x), config.ai.turnRate * dt);
+          R.angle = e.angle;
+          R.t -= dt;
+          if (R.t <= 0) { R.state = 'lock'; R.t = w.lockDelay; }
+          return;
+        }
+      } else if (R.state === 'lock') {
+        e.angle = R.angle;
+        R.t -= dt;
+        if (R.t <= 0) {
+          this.fireRail(e, w, R.angle);
+          w.cd = w.cooldown;
+          R.state = 'idle';
+        }
+        return;
+      }
+      if (los && w.cd <= 0) { R.state = 'aim'; R.t = w.aimTime; R.angle = e.angle; return; }
+    }
     if (los) {
       const dx = p.x - e.x, dy = p.y - e.y;
       const ux = dx / d, uy = dy / d;
@@ -454,7 +505,7 @@ export class World {
       e.angle = turnToward(e.angle, aim, config.ai.turnRate * dt);
       if (Math.abs(angleDiff(e.angle, aim)) < 0.3) {
         for (const w of e.weapons) {
-          if (w.cd > 0) continue;
+          if (w.cd > 0 || w.kind === 'rail') continue;
           w.cd = 1 / (w.rate * config.ai.fireRateMult);
           this.shoot(e, w, Math.atan2(p.y - e.y, p.x - e.x), 'hostile', config.ai.aimError);
         }
@@ -512,6 +563,36 @@ export class World {
       this.bullets.push(b);
       this.view.addBullet(b);
     }
+  }
+
+  // Hitscan beam: travels until a wall/cover or the first robot it may hit.
+  // The player's beam hits sentries; a sentry's beam only hits the player.
+  fireRail(src, w, angle) {
+    const byPlayer = src.isPlayer;
+    if (byPlayer) this.alert(this.isDisguised() ? 'Cover blown' : 'Shots fired');
+    const dx = Math.cos(angle), dy = Math.sin(angle);
+    let t = this.grid.raycast(src.x, src.y, dx, dy, w.range);
+    let hit = null;
+    const targets = byPlayer ? this.entities : [this.player];
+    for (const e of targets) {
+      if (!e.alive || e === src) continue;
+      const ox = e.x - src.x, oy = e.y - src.y;
+      const s = ox * dx + oy * dy;
+      if (s < 0 || s > t + e.radius) continue;
+      const perp2 = ox * ox + oy * oy - s * s;
+      if (perp2 > e.radius * e.radius) continue;
+      const at = s - Math.sqrt(e.radius * e.radius - perp2);
+      if (at < t) { t = Math.max(0, at); hit = e; }
+    }
+    const x0 = src.x + dx * src.radius * 0.8, y0 = src.y + dy * src.radius * 0.8;
+    const x1 = src.x + dx * t, y1 = src.y + dy * t;
+    this.view.railBeam(x0, y0, x1, y1, byPlayer);
+    this.view.burst(x1, y1, byPlayer ? 0x9fe8ff : 0xff6040, 10, 3);
+    if (hit) {
+      if (hit.isPlayer) this.damagePlayer(w.damage);
+      else this.damage(hit, w.damage);
+    }
+    this.emit('rail', { byPlayer, hit: !!hit });
   }
 
   updateBullets(dt) {
@@ -585,6 +666,7 @@ export class World {
     this.view.burst(p.x, p.y, 0xffffff, 30, 5);
     this.view.ringFx(p.x, p.y, 0xffffff, 3);
     this.firing = false;
+    this.aiming = false;
     this.state = 'dead';
     this.stateTimer = 1.6;
     this.emit('dead', reason);
@@ -680,6 +762,7 @@ export class World {
   win() {
     this.state = 'won';
     this.firing = false;
+    this.aiming = false;
     this.emit('won');
   }
 }

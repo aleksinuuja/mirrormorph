@@ -5,7 +5,7 @@ const ICON_FIRE = '<svg viewBox="0 0 24 24" width="34" height="34" fill="none" s
 const $ = (id) => document.getElementById(id);
 
 export class UI {
-  constructor({ level, onPlay, onMenu, onFire, onRestart, onToggleDebug }) {
+  constructor({ level, onPlay, onMenu, onFirePress, onFireRelease, onRestart, onToggleDebug }) {
     this.onPlay = onPlay;
     this.onMenu = onMenu;
     this.cache = {};
@@ -27,9 +27,9 @@ export class UI {
       ev.preventDefault(); ev.stopPropagation();
       fire.setPointerCapture?.(ev.pointerId);
       fire.classList.add('firing');
-      onFire(true);
+      onFirePress();
     });
-    const release = () => { fire.classList.remove('firing'); onFire(false); };
+    const release = () => { fire.classList.remove('firing'); onFireRelease(); };
     fire.addEventListener('pointerup', release);
     fire.addEventListener('pointercancel', release);
     fire.addEventListener('lostpointercapture', release);
@@ -122,11 +122,16 @@ export class UI {
     }
 
     this.set('fireDisabled', !world.canFire, (v) => { $('btn-fire').disabled = v; });
+    const w = world.weapon;
+    this.set('aiming', !!world.aiming, (v) => $('btn-fire').classList.toggle('aiming', v));
+    this.set('rail', !!w && w.kind === 'rail', (v) => $('btn-fire').classList.toggle('rail', v));
+    this.set('cooling', !!w && w.kind === 'rail' && w.cd > 0, (v) => $('btn-fire').classList.toggle('cooling', v));
     this.set('alerted', !!world.alerted, (v) => document.body.classList.toggle('alerted', v));
 
     let status = '';
     if (p.alive) {
-      if (world.alerted) status = 'ALERT · ALL SENTRIES HUNTING';
+      if (world.aiming) status = 'RAILGUN · STICK AIMS · FIRE SHOOTS';
+      else if (world.alerted) status = 'ALERT · ALL SENTRIES HUNTING';
       else if (world.isDisguised()) status = `DISGUISED · ${p.arch.label.toUpperCase()}`;
     }
     this.set('status', status, (v) => { $('status').textContent = v; });
