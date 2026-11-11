@@ -45,6 +45,13 @@ export const config = {
     cooldown: 1.0,          // seconds before the same sentry can be startled again
   },
 
+  level: {
+    exitHoldTime: 3,        // seconds you must stay on the exit to escape
+    doorOpenTime: 1.0,      // seconds the emergency door takes to open
+    spawnInterval: 3,       // seconds between reinforcements once the door is open
+    maxReinforcements: 5,   // most sentries alive at once from the door
+  },
+
   ai: {
     fireRateMult: 0.6,      // AI fires at this fraction of the archetype's rate (player gets full)
     aimError: 0.15,         // radians of random aim error for AI shots

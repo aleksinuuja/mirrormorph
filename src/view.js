@@ -144,7 +144,8 @@ export class View {
     const floorCells = [], wallCells = [];
     for (let r = 0; r < H; r++) {
       for (let c = 0; c < W; c++) {
-        if (grid.isWall(c, r)) wallCells.push([c, r]);
+        if (grid.isDoor(c, r)) floorCells.push([c, r]);
+        else if (grid.isWall(c, r)) wallCells.push([c, r]);
         else floorCells.push([c, r]);
       }
     }
@@ -179,6 +180,20 @@ export class View {
       m.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), coverEdge));
       this.levelGroup.add(m);
     }
+
+    // Emergency doors: red panels that sink into the floor when opened.
+    this.doors = [];
+    const doorMat = new THREE.MeshStandardMaterial({ color: 0xc81e1e, emissive: 0x5a0000, flatShading: true, roughness: 0.5 });
+    const doorEdge = new THREE.LineBasicMaterial({ color: 0xff6a6a });
+    for (const { c, r } of grid.doorTiles) {
+      const geo = new THREE.BoxGeometry(1, 1, 1);
+      const m = new THREE.Mesh(geo, doorMat);
+      m.position.set(c + 0.5, 0.5, -(H - 1 - r + 0.5));
+      m.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), doorEdge));
+      this.levelGroup.add(m);
+      this.doors.push(m);
+    }
+    this.doorMat = doorMat;
 
     this.exitMesh = null;
     if (exit) {
@@ -526,7 +541,17 @@ export class View {
       this.sectorLen = -1;
     }
 
-    if (this.exitMesh) this.exitMesh.material.opacity = 0.22 + 0.12 * Math.sin(this.time * 3);
+    if (this.exitMesh) {
+      // Holding on the exit: it brightens and pulses faster as the count runs out.
+      const k = Math.min(1, (world.exitTimer || 0) / config.level.exitHoldTime);
+      this.exitMesh.material.opacity = 0.22 + 0.12 * Math.sin(this.time * (3 + 12 * k)) + 0.45 * k;
+      this.exitMesh.material.color.setRGB(0.24 + 0.76 * k, 1, 0.66 + 0.34 * k);
+    }
+    if (this.doors?.length) {
+      const d = world.door || { open: 0, state: 'closed' };
+      for (const m of this.doors) m.position.y = 0.5 - 1.02 * d.open;
+      this.doorMat.emissive.setRGB(d.state === 'closed' ? 0.35 : 0.6 + 0.4 * Math.sin(this.time * 8), 0, 0);
+    }
 
     this.updateCamera(p, dt);
     this.updateFx(simDt);

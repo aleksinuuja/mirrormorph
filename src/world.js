@@ -37,6 +37,8 @@ export class World {
     this.entities = [];
     this.bullets = [];
     this.alerted = false;
+    this.exitTimer = 0;
+    this.door = { state: 'closed', open: 0, timer: 0 };
     this.freezeTimer = 0;
     this.seenTimer = 0;
     this.field = null;
@@ -57,6 +59,22 @@ export class World {
     } else this.exit = null;
 
     this.view.buildLevel(g, this.exit);
+
+    // Emergency door: reinforcements step in onto the floor tile just inside it.
+    this.doorSpawn = null;
+    for (const { c, r } of g.doorTiles) {
+      for (const [dc, dr] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+        if (!g.isBlocked(c + dc, r + dr)) { this.doorSpawn = { ...g.center(c + dc, r + dr), face: Math.atan2(-dr, dc) }; break; }
+      }
+      if (this.doorSpawn) break;
+    }
+    if (g.doorTiles.length > 1 && this.doorSpawn) {
+      // centre the spawn point along a multi-tile door
+      const cs = g.doorTiles.map((t) => g.center(t.c, t.r));
+      const mx = cs.reduce((a, b) => a + b.x, 0) / cs.length, my = cs.reduce((a, b) => a + b.y, 0) / cs.length;
+      const dx = Math.cos(this.doorSpawn.face), dy = Math.sin(this.doorSpawn.face);
+      this.doorSpawn.x = mx + dx; this.doorSpawn.y = my + dy;
+    }
 
     g.posted.forEach((pos, i) => {
       const s = level.posted?.[i] || { facing: -90, arc: 90, period: 5, phase: 0 };
@@ -129,6 +147,10 @@ export class World {
 
   get canFire() {
     return this.state === 'playing' && this.player.alive && this.player.weapons.length > 0;
+  }
+
+  get exitHold() {
+    return config.level.exitHoldTime;
   }
 
   get weapon() {
@@ -249,7 +271,8 @@ export class World {
     this.updatePlayerFire(dt);
     this.updateBullets(dt);
     this.entities = this.entities.filter((e) => e.alive);
-    this.checkGoal();
+    this.updateDoor(dt);
+    this.checkGoal(dt);
   }
 
   // ======================================================== player
@@ -307,7 +330,7 @@ export class World {
     p.speed = a.speed;
     p.mass = a.mass ?? 1;
     p.weapons = cloneWeapons(a.weapons);
-    p.formHp = t.hp;          // copy includes current HP
+    p.formHp = t.maxHp;       // a fresh copy always starts at full HP
     p.formMaxHp = t.maxHp;
     p.angle = t.angle;
     this.charge.target = null;
@@ -344,6 +367,7 @@ export class World {
     p.mass = a.mass ?? 1;
     p.weapons = cloneWeapons(a.weapons);
     p.formHp = 0;
+    p.hp = p.maxHp;           // changing shape always restores full HP
     this.aiming = false;
     this.view.setEntityShape(p);
     const spot = this.findFree(p.x, p.y, p.radius, config.morph.revertSearchRadius);
@@ -754,10 +778,42 @@ export class World {
   }
 
   // ======================================================== goal
-  checkGoal() {
+  // Escaping takes standing on the exit for a few seconds; stepping off resets the count.
+  checkGoal(dt) {
     if (this.state !== 'playing' || !this.player.alive || !this.exit) return;
     const e = this.exit, p = this.player;
-    if (p.x >= e.x && p.x <= e.x + e.w && p.y >= e.y && p.y <= e.y + e.h) this.win();
+    const on = p.x >= e.x && p.x <= e.x + e.w && p.y >= e.y && p.y <= e.y + e.h;
+    this.exitTimer = on ? this.exitTimer + dt : 0;
+    if (this.exitTimer >= config.level.exitHoldTime) this.win();
+  }
+
+  // When every sentry is gone the emergency door opens and keeps sending reinforcements.
+  updateDoor(dt) {
+    const d = this.door, L = config.level;
+    if (!this.doorSpawn) return;
+    if (d.state === 'closed') {
+      if (this.entities.length === 0) {
+        d.state = 'opening';
+        this.alert('Emergency door');
+        this.emit('door');
+      }
+      return;
+    }
+    if (d.state === 'opening') {
+      d.open = Math.min(1, d.open + dt / L.doorOpenTime);
+      if (d.open >= 1) { d.state = 'open'; d.timer = 0; }
+      return;
+    }
+    d.timer -= dt;
+    if (d.timer <= 0 && this.entities.length < L.maxReinforcements) {
+      const s = this.doorSpawn;
+      if (Math.hypot(this.player.x - s.x, this.player.y - s.y) < 0.9) return; // doorway blocked
+      const e = this.spawnSentry(s, { mode: 'reinforcement', baseAngle: s.face, angle: s.face });
+      e.rail = { state: 'idle', t: 0, angle: s.face };
+      e.weapons[0].cd = 0.8; // a beat before the newcomer can shoot
+      this.view.ringFx(s.x, s.y, 0xff3030, 1.6);
+      d.timer = L.spawnInterval;
+    }
   }
 
   win() {

@@ -4,7 +4,8 @@
 //   o  block (cover). Touching o's form one solid block: "oooo" is a wide one,
 //      a vertical stack is a tall one.
 //   =  slab (long low cover)
-//   P  player start       E  exit tiles
+//   P  player start       E  exit tiles (stand on them for a few seconds to escape)
+//   D  emergency door (opens when every sentry is destroyed and sends in reinforcements)
 //   S  posted sentry (settings in `posted`, in reading order: left→right, top→bottom)
 //   1 2, 3 4, 5 6 …  patrol routes: one sentry walks back and forth between each pair
 //
@@ -27,8 +28,8 @@ export default {
     '#######..######..######',
     '#######..###........###',
     '##........##.S....S.###',
-    '##........##........###',
-    '##...1....##.S....S.###',
+    '##........##........D##',
+    '##...1....##.S....S.D##',
     '##.o...o..##........###',
     '##.o...o..##.S....S.###',
     '##........####..#######',

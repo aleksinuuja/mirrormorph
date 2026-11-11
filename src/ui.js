@@ -92,6 +92,7 @@ export class UI {
       case 'status': this.toast(data, 2000); break;
       case 'morph': this.toast(`◆ ${data.toUpperCase()}`, 1200); break;
       case 'revert': this.toast('FORM LOST', 1200); break;
+      case 'door': this.toast('EMERGENCY DOOR OPEN', 2200); break;
       case 'alert': this.flashAlarm(); this.toast(`ALERT · ${String(data).toUpperCase()}`, 2200); break;
       case 'dead': this.banner('DESTROYED', data); break;
       case 'won':
@@ -127,6 +128,13 @@ export class UI {
     this.set('rail', !!w && w.kind === 'rail', (v) => $('btn-fire').classList.toggle('rail', v));
     this.set('cooling', !!w && w.kind === 'rail' && w.cd > 0, (v) => $('btn-fire').classList.toggle('cooling', v));
     this.set('alerted', !!world.alerted, (v) => document.body.classList.toggle('alerted', v));
+
+    const hold = world.exitTimer > 0 && world.state === 'playing' ? Math.max(0, world.exitHold - world.exitTimer) : 0;
+    this.set('exitCount', hold > 0 ? hold.toFixed(1) : '', (v) => {
+      const el = $('exit-count');
+      el.textContent = v;
+      el.classList.toggle('hidden', !v);
+    });
 
     let status = '';
     if (p.alive) {

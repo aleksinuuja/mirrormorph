@@ -13,7 +13,7 @@ export function angleDiff(a, b) {
   return d;
 }
 
-const BLOCKING = new Set(['#', 'o', '=']);
+const BLOCKING = new Set(['#', 'D', 'o', '=']);
 
 function mergeIntervals(list) {
   list.sort((a, b) => a[0] - b[0]);
@@ -40,6 +40,7 @@ export class Grid {
     this.posted = [];     // 'S' positions in reading order
     this.patrolPoints = {};
     this.exitTiles = [];
+    this.doorTiles = [];
     this.start = null;
 
     for (let r = 0; r < H; r++) {
@@ -50,17 +51,18 @@ export class Grid {
         if (ch === 'P') this.start = ctr;
         else if (ch === 'S') this.posted.push(ctr);
         else if (ch === 'E') this.exitTiles.push({ c, r });
+        else if (ch === 'D') this.doorTiles.push({ c, r });
         else if (ch >= '1' && ch <= '9') this.patrolPoints[ch] = ctr;
       }
       // Row runs of walls and slabs become single rects.
       let c = 0;
       while (c < W) {
         const ch = this.rows[r][c];
-        if (ch === '#' || ch === '=') {
+        if (ch === '#' || ch === 'D' || ch === '=') {
           const s = c;
           while (c < W && this.rows[r][c] === ch) c++;
           const n = c - s, y = H - 1 - r;
-          if (ch === '#') this.walls.push({ x: s, y, w: n, h: 1 });
+          if (ch === '#' || ch === 'D') this.walls.push({ x: s, y, w: n, h: 1 });
           else this.obstacles.push({ x: s + 0.05, y: y + 0.2, w: n - 0.1, h: 0.6, kind: 'slab' });
         } else c++;
       }
@@ -96,7 +98,7 @@ export class Grid {
     const push = (map, k, iv) => { if (!map.has(k)) map.set(k, []); map.get(k).push(iv); };
     for (let r = 0; r < H; r++) {
       for (let c = 0; c < W; c++) {
-        if (this.rows[r][c] !== '#') continue;
+        if (!this.isWall(c, r)) continue;
         const y0 = H - 1 - r, y1 = y0 + 1;
         if (r > 0 && !this.isWall(c, r - 1)) push(hEdges, y1, [c, c + 1]);
         if (r < H - 1 && !this.isWall(c, r + 1)) push(hEdges, y0, [c, c + 1]);
@@ -117,7 +119,12 @@ export class Grid {
 
   isWall(c, r) {
     if (c < 0 || r < 0 || c >= this.W || r >= this.H) return true;
-    return this.rows[r][c] === '#';
+    const ch = this.rows[r][c];
+    return ch === '#' || ch === 'D';
+  }
+
+  isDoor(c, r) {
+    return this.rows[r]?.[c] === 'D';
   }
 
   isBlocked(c, r) {
