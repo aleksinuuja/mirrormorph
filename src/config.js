@@ -11,6 +11,8 @@ export const config = {
 
   player: {
     hitFlash: 0.12,         // seconds an entity flashes white when hit
+    turnRate: 30,           // radians/sec the hero turns toward the walk direction
+    aimTurnRate: 40,        // radians/sec the aim follows the stick in railgun aim mode (≈ instant)
   },
 
   vision: {
@@ -85,9 +87,9 @@ export const config = {
       label: 'Sentry', shape: 'sentry',
       radius: 0.4, hp: 30, speed: 2.6, mass: 4, preferredRange: 4,
       // Railgun: sentries aim (tracking) for aimTime, freeze for lockDelay, then fire.
-      // The player (in sentry form) fires on the second FIRE press. 30 dmg: one-shots a
-      // sentry, two hits kill the 40 HP hero.
-      weapons: [{ kind: 'rail', damage: 30, aimTime: 1.5, lockDelay: 0.35, cooldown: 1.5, range: 18 }],
+      // The player (in sentry form) fires on the second FIRE press.
+      // damage 30 one-shots a sentry; damageToPlayer 15 means the 40 HP hero survives two hits.
+      weapons: [{ kind: 'rail', damage: 30, damageToPlayer: 15, aimTime: 1.5, lockDelay: 0.35, cooldown: 1.5, range: 18 }],
     },
   },
 };

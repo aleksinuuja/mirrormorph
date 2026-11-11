@@ -282,13 +282,13 @@ export class World {
     const { x: ix, y: iy } = this.input;
     const m = Math.hypot(ix, iy);
     if (this.aiming) {
-      if (m > 0.2) p.angle = turnToward(p.angle, Math.atan2(iy, ix), 6 * dt);
+      if (m > 0.2) p.angle = turnToward(p.angle, Math.atan2(iy, ix), config.player.aimTurnRate * dt);
       return;
     }
     if (p.speed > 0 && m > 0) {
       p.x += ix * p.speed * dt;
       p.y += iy * p.speed * dt;
-      if (m > 0.05) p.angle = turnToward(p.angle, Math.atan2(iy, ix), 14 * dt);
+      if (m > 0.05) p.angle = turnToward(p.angle, Math.atan2(iy, ix), config.player.turnRate * dt);
     }
   }
 
@@ -614,7 +614,7 @@ export class World {
     this.view.burst(x1, y1, byPlayer ? 0x9fe8ff : 0xff6040, 10, 3);
     for (const { e, at } of hits) {
       this.view.burst(src.x + dx * at, src.y + dy * at, byPlayer ? 0x9fe8ff : 0xff6040, 8, 3);
-      if (e.isPlayer) this.damagePlayer(w.damage);
+      if (e.isPlayer) this.damagePlayer(w.damageToPlayer ?? w.damage);
       else this.damage(e, w.damage);
     }
     this.emit('rail', { byPlayer, hits: hits.length });

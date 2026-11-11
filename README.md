@@ -29,7 +29,7 @@ To try it on a phone on the same Wi-Fi, run `python3 -m http.server 8765 --bind 
 - While the sentries are unaware, the beam is their only marker. After the alarm the beams vanish and each sentry gets a red ring.
 - If any part of you is in a cone while undisguised, the alarm goes off.
 - Once alerted, all sentries hunt you through the maze for the rest of the attempt. Dying restarts the level.
-- Sentry railguns: a red line tracks you for 1.5 s, then it locks for 0.35 s (it flickers and stops following you), then the beam fires. Sidestep when it locks. Each hit does 30 damage, so two hits kill your 40-HP hull.
+- Sentry railguns: a red line tracks you for 1.5 s, then it locks for 0.35 s (it flickers and stops following you), then the beam fires. Sidestep when it locks. A sentry's beam does 15 damage to you, so your 40-HP hull takes three hits. Your beam does 30 and one-shots a sentry.
 - **Escaping:** stand on the green exit for 3 s. A countdown shows, and stepping off resets it.
 - **Emergency door:** a red door in the guard room. When every sentry is destroyed it opens and sends in a new sentry every 3 s, keeping up to 5 alive.
 - **Changing shape restores full HP:** a fresh copy starts at the sentry's full HP, and reverting restores your full hull. Fights can go on indefinitely.
