@@ -5,20 +5,24 @@ const ICON_FIRE = '<svg viewBox="0 0 24 24" width="34" height="34" fill="none" s
 const $ = (id) => document.getElementById(id);
 
 export class UI {
-  constructor({ level, onPlay, onMenu, onFirePress, onFireRelease, onRestart, onToggleDebug }) {
+  constructor({ levels, onPlay, onMenu, onFirePress, onFireRelease, onRestart, onToggleDebug }) {
     this.onPlay = onPlay;
     this.onMenu = onMenu;
     this.cache = {};
     this.toastTimer = 0;
 
+    this.levels = levels;
     const list = $('room-list');
-    const b = document.createElement('button');
-    b.className = 'room-card';
-    b.innerHTML = '<div class="room-num">▶</div><div><div class="room-name"></div><div class="room-blurb"></div></div>';
-    b.querySelector('.room-name').textContent = level.name;
-    b.querySelector('.room-blurb').textContent = level.blurb;
-    b.addEventListener('click', onPlay);
-    list.append(b);
+    levels.forEach((level, i) => {
+      const b = document.createElement('button');
+      b.className = 'room-card';
+      b.innerHTML = '<div class="room-num"></div><div><div class="room-name"></div><div class="room-blurb"></div></div>';
+      b.querySelector('.room-num').textContent = String(i + 1);
+      b.querySelector('.room-name').textContent = level.name;
+      b.querySelector('.room-blurb').textContent = level.blurb;
+      b.addEventListener('click', () => onPlay(i));
+      list.append(b);
+    });
 
     const fire = $('btn-fire');
     fire.innerHTML = ICON_FIRE;
@@ -85,7 +89,7 @@ export class UI {
     f.classList.add('go');
   }
 
-  onEvent(type, data) {
+  onEvent(type, data, world) {
     switch (type) {
       case 'loaded': this.hideBanner(); break;
       case 'hint': this.toast(data, 3800); break;
@@ -95,12 +99,14 @@ export class UI {
       case 'door': this.toast('EMERGENCY DOOR OPEN', 2200); break;
       case 'alert': this.flashAlarm(); this.toast(`ALERT · ${String(data).toUpperCase()}`, 2200); break;
       case 'dead': this.banner('DESTROYED', data); break;
-      case 'won':
-        this.banner('ESCAPED', 'You made it out.', [
-          { label: 'Menu', onClick: this.onMenu },
-          { label: 'Play again', primary: true, onClick: this.onPlay },
-        ]);
+      case 'won': {
+        const i = this.levels.indexOf(world?.room);
+        const next = i >= 0 && i + 1 < this.levels.length ? i + 1 : -1;
+        const actions = [{ label: 'Menu', onClick: this.onMenu }, { label: 'Play again', primary: next < 0, onClick: () => this.onPlay(i) }];
+        if (next >= 0) actions.push({ label: `Room ${next + 1}`, primary: true, onClick: () => this.onPlay(next) });
+        this.banner('ESCAPED', 'You made it out.', actions);
         break;
+      }
     }
   }
 
@@ -139,6 +145,7 @@ export class UI {
     let status = '';
     if (p.alive) {
       if (world.aiming) status = 'RAILGUN · STICK AIMS · FIRE SHOOTS';
+      else if (world.firing && w?.kind === 'gatling') status = world.gunTarget ? 'GATLING · AUTO-AIM LOCKED' : 'GATLING · NO TARGET IN SIGHT';
       else if (world.alerted) status = 'ALERT · ALL SENTRIES HUNTING';
       else if (world.isDisguised()) status = `DISGUISED · ${p.arch.label.toUpperCase()}`;
     }

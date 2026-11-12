@@ -92,5 +92,16 @@ export const config = {
       // damage 30 one-shots a sentry; the hero takes half (player.damageTaken), so 40 HP survives two hits.
       weapons: [{ kind: 'rail', damage: 30, aimTime: 1.5, lockDelay: 0.35, cooldown: 1.5, range: 18 }],
     },
+    gunner: {
+      label: 'Gunner', shape: 'gunner',
+      radius: 0.34, hp: 30, speed: 3.0, mass: 3, preferredRange: 5,
+      // Gatling: auto-aims at the nearest enemy but the gun swings slowly (trackRate rad/s),
+      // so you can outrun its aim by circling. It spins up before the first shot.
+      // In gunner form the hero holds FIRE; the gun swings faster (playerTrackRate) to the nearest visible sentry.
+      weapons: [{
+        kind: 'gatling', rate: 14, damage: 3, bulletSpeed: 22, spread: 0.07,
+        trackRate: 1.3, playerTrackRate: 5, fireCone: 0.25, spinUp: 0.45, range: 11,
+      }],
+    },
   },
 };

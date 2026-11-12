@@ -444,6 +444,11 @@ export class View {
       if (simDt > 0) o.walk += (target - o.walk) * Math.min(1, simDt * 10);
       o.phase += moved * (Math.PI / (e.radius * 1.7));
       if (o.rig) animateRig(o.rig, o.phase, o.walk, e.gaze != null ? e.gaze - e.angle : 0);
+      if (o.rig?.barrel) {
+        const gw = e.weapons?.[0];
+        const spin = gw?.spinUp ? Math.min(1, (gw.spin || 0) / gw.spinUp) : 0;
+        o.rig.barrel.rotation.x += spin * 40 * simDt;
+      }
 
       const flashing = e.flash > 0;
       if (flashing !== o.flashing) {
@@ -481,6 +486,9 @@ export class View {
         show = true;
         ang = e.rail.angle;
         blink = e.rail.state === 'lock';
+      } else if (world.alerted && w?.kind === 'gatling' && (w.spin || 0) > 0) {
+        // Gunners: a faint amber line where the gun points, so you can read its swing.
+        show = 'gatling';
       }
       o.aim.visible = show;
       if (!show) continue;
@@ -492,6 +500,10 @@ export class View {
         const ready = !w || w.cd <= 0;
         o.aim.scale.set(len, 1, 0.05);
         o.aim.material.opacity = ready ? 0.85 : 0.3;
+      } else if (show === 'gatling') {
+        o.aim.scale.set(Math.min(len, w.range), 1, 0.03);
+        o.aim.material.color.setHex(0xffa020);
+        o.aim.material.opacity = 0.25 + 0.4 * Math.min(1, (w.spin || 0) / w.spinUp);
       } else if (blink) {
         o.aim.scale.set(len, 1, 0.09);
         o.aim.material.color.setHex(Math.sin(this.time * 60) > 0 ? 0xffffff : 0xff2020);
@@ -501,6 +513,15 @@ export class View {
         o.aim.material.color.setHex(0xff3030);
         o.aim.material.opacity = 0.75;
       }
+    }
+
+    // Gatling auto-aim: reticle on the robot the hero's gun is swinging to.
+    const gt = world.gunTarget;
+    this.reticle.visible = !!gt && gt.alive;
+    if (this.reticle.visible) {
+      this.reticle.position.set(gt.x, 0.06, -gt.y);
+      this.reticle.scale.setScalar(gt.radius + 0.3 + Math.sin(this.time * 10) * 0.03);
+      this.reticle.rotation.y = this.time * 2;
     }
 
     // Morph range + charge clock

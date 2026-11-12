@@ -50,6 +50,7 @@ export class World {
     this.input = { x: 0, y: 0 };
     this.firing = false;
     this.aiming = false;
+    this.gunTarget = null;
     this.charge = { target: null, t: 0, inRange: false };
 
     if (g.exitTiles.length) {
@@ -102,9 +103,10 @@ export class World {
   }
 
   spawnSentry(pos, extra) {
-    const a = config.archetypes.sentry;
+    const type = this.room?.enemy || 'sentry';
+    const a = config.archetypes[type];
     const e = {
-      id: nextId++, type: 'sentry', arch: a, isPlayer: false,
+      id: nextId++, type, arch: a, isPlayer: false,
       x: pos.x, y: pos.y, angle: extra.baseAngle ?? -Math.PI / 2,
       radius: a.radius, speed: a.speed, mass: a.mass ?? 1,
       hp: a.hp, maxHp: a.hp,
@@ -285,10 +287,11 @@ export class World {
       if (m > 0.2) p.angle = turnToward(p.angle, Math.atan2(iy, ix), config.player.aimTurnRate * dt);
       return;
     }
+    const gunLocked = this.firing && !!this.gunTarget; // gatling: the gun owns your facing
     if (p.speed > 0 && m > 0) {
       p.x += ix * p.speed * dt;
       p.y += iy * p.speed * dt;
-      if (m > 0.05) p.angle = turnToward(p.angle, Math.atan2(iy, ix), config.player.turnRate * dt);
+      if (m > 0.05 && !gunLocked) p.angle = turnToward(p.angle, Math.atan2(iy, ix), config.player.turnRate * dt);
     }
   }
 
@@ -381,13 +384,41 @@ export class World {
   updatePlayerFire(dt) {
     const p = this.player;
     for (const w of p.weapons) w.cd = Math.max(0, w.cd - dt);
+    const g = p.weapons[0]?.kind === 'gatling' ? p.weapons[0] : null;
+    const prev = this.gunTarget;
+    this.gunTarget = null;
+    if (g) {
+      g.spin = Math.max(0, (g.spin || 0) + (this.firing && p.alive ? dt : -dt * 2));
+      if (this.firing && p.alive) {
+        // Auto-aim: swing toward the nearest robot you can see in range. Stay on the
+        // current one while it's still visible, unless another is clearly closer.
+        const near = this.nearestVisible(p, g.range);
+        const keep = prev && prev.alive && dist(p, prev) < g.range && this.grid.canSee(p.x, p.y, prev.x, prev.y);
+        this.gunTarget = keep && (!near || dist(p, near) > dist(p, prev) - 1.5) ? prev : near;
+        if (this.gunTarget) {
+          const t = this.gunTarget;
+          p.angle = turnToward(p.angle, Math.atan2(t.y - p.y, t.x - p.x), g.playerTrackRate * dt);
+        }
+      }
+    }
     if (!this.firing || !p.alive) return;
     for (const w of p.weapons) {
       if (w.cd > 0 || w.kind === 'rail') continue;
+      if (w.kind === 'gatling' && w.spin < w.spinUp * 0.5) continue; // the hero's gun spins up faster
       w.cd = 1 / w.rate;
       this.alert(this.isDisguised() ? 'Cover blown' : 'Shots fired'); // gunfire is never quiet
-      this.shoot(p, w, p.angle, 'player');
+      this.shoot(p, w, p.angle, 'player', w.spread || 0);
     }
+  }
+
+  nearestVisible(src, range) {
+    let best = null, bd = range;
+    for (const e of this.entities) {
+      if (!e.alive) continue;
+      const d = dist(src, e);
+      if (d < bd && this.grid.canSee(src.x, src.y, e.x, e.y)) { bd = d; best = e; }
+    }
+    return best;
   }
 
   // ======================================================== sentry AI
@@ -431,7 +462,7 @@ export class World {
     const step = Math.min(d, speed * dt);
     e.x += (dx / d) * step;
     e.y += (dy / d) * step;
-    if (face) e.angle = turnToward(e.angle, Math.atan2(dy, dx), 8 * dt);
+    if (face) e.angle = turnToward(e.angle, Math.atan2(dy, dx), (this.alerted && e.weapons[0]?.trackRate ? e.weapons[0].trackRate * 1.5 : 8) * dt);
     return d - step;
   }
 
@@ -511,6 +542,11 @@ export class World {
       }
       if (los && w.cd <= 0) { R.state = 'aim'; R.t = w.aimTime; R.angle = e.angle; return; }
     }
+    const gat = w && w.kind === 'gatling' ? w : null;
+    if (gat) {
+      // Spins up while it has you in sight, winds down otherwise.
+      gat.spin = clamp((gat.spin || 0) + (los && d < gat.range ? dt : -dt), 0, gat.spinUp);
+    }
     if (los) {
       const dx = p.x - e.x, dy = p.y - e.y;
       const ux = dx / d, uy = dy / d;
@@ -526,6 +562,15 @@ export class World {
       e.x += mx * huntSpeed * dt;
       e.y += my * huntSpeed * dt;
       const aim = Math.atan2(dy, dx);
+      if (gat) {
+        // Slow swing: the gun only fires along where it points, so circling outruns it.
+        e.angle = turnToward(e.angle, aim, gat.trackRate * dt);
+        if (gat.spin >= gat.spinUp && gat.cd <= 0 && d < gat.range && Math.abs(angleDiff(e.angle, aim)) < gat.fireCone) {
+          gat.cd = 1 / (gat.rate * config.ai.fireRateMult);
+          this.shoot(e, gat, e.angle, 'hostile', gat.spread);
+        }
+        return;
+      }
       e.angle = turnToward(e.angle, aim, config.ai.turnRate * dt);
       if (Math.abs(angleDiff(e.angle, aim)) < 0.3) {
         for (const w of e.weapons) {
@@ -810,7 +855,7 @@ export class World {
       const s = this.doorSpawn;
       if (Math.hypot(this.player.x - s.x, this.player.y - s.y) < 0.9) return; // doorway blocked
       const e = this.spawnSentry(s, { mode: 'reinforcement', baseAngle: s.face, angle: s.face });
-      e.rail = { state: 'idle', t: 0, angle: s.face };
+      if (e.weapons[0]?.kind === 'rail') e.rail = { state: 'idle', t: 0, angle: s.face };
       e.weapons[0].cd = 0.8; // a beat before the newcomer can shoot
       this.view.ringFx(s.x, s.y, 0xff3030, 1.6);
       d.timer = L.spawnInterval;

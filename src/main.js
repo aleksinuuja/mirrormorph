@@ -1,5 +1,5 @@
 import { config } from './config.js';
-import level from './level.js';
+import levels from './level.js';
 import { View } from './view.js';
 import { World } from './world.js';
 import { UI } from './ui.js';
@@ -17,7 +17,7 @@ const world = new World(view, (type, data) => {
 });
 
 const ui = new UI({
-  level,
+  levels,
   onPlay: play,
   onMenu: menu,
   onFirePress: () => world.firePress(),
@@ -26,10 +26,10 @@ const ui = new UI({
   onToggleDebug: () => debugEl.classList.toggle('hidden'),
 });
 
-function play() {
+function play(i = 0) {
   goFullscreen();
   ui.showHud();
-  world.load(level);
+  world.load(levels[i] || levels[0]);
 }
 
 // Fullscreen where the browser allows it (Android, iPad, desktop). iPhone Safari

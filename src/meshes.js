@@ -119,6 +119,68 @@ const builders = {
     g.add(torso, ...legs);
     return { group: g, rig: { torso, legs, arms, head } };
   },
+
+  // Gunner: tall and lean, gunmetal teal with an amber visor, a rotary cannon
+  // slung under the right arm and an ammo drum on the back.
+  gunner() {
+    const g = new THREE.Group();
+    const torso = new THREE.Group();
+    const armour = mat(0x4f7a78), plate = mat(0x6fa29c), dark = mat(0x1f2a2c), joint = mat(0x3a4c4c);
+    const amber = mat(0xffb020, { emissive: 0xff8a00 });
+    const body = edges(box(0.62, 0.95, 0.66, armour), 0xc8fff4, 0.35);
+    body.position.y = 1.45;
+    const chest = box(0.12, 0.4, 0.5, plate);
+    chest.position.set(0.32, 1.55, 0);
+    const head = new THREE.Group();
+    head.position.y = 2.06;
+    const skull = edges(box(0.42, 0.3, 0.4, armour), 0xc8fff4, 0.35);
+    const visor = box(0.08, 0.08, 0.34, amber);
+    visor.position.set(0.21, 0.02, 0);
+    const antenna = box(0.04, 0.35, 0.04, dark);
+    antenna.position.set(-0.12, 0.3, -0.14);
+    head.add(skull, visor, antenna);
+    const drum = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.5, 10), dark);
+    drum.rotation.x = Math.PI / 2;
+    drum.position.set(-0.48, 1.5, 0);
+    torso.add(body, chest, head, drum);
+
+    // Thin arms; the right one holds the gatling, which stays level while walking.
+    const thinArm = (z) => {
+      const pivot = new THREE.Group();
+      pivot.position.set(0, 1.75, z);
+      const upper = box(0.2, 0.5, 0.2, joint);
+      upper.position.y = -0.25;
+      const fore = box(0.26, 0.4, 0.26, armour);
+      fore.position.y = -0.7;
+      pivot.add(upper, fore);
+      return pivot;
+    };
+    const arms = [thinArm(-0.48)];
+    const gunMount = new THREE.Group();
+    gunMount.position.set(0.25, 1.15, 0.5);
+    const housing = edges(box(0.5, 0.3, 0.3, plate), 0xc8fff4, 0.35);
+    const barrel = new THREE.Group(); // spins about its own axis (local +X)
+    barrel.position.set(0.55, 0, 0);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * TAU;
+      const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.7, 5), dark);
+      tube.rotation.z = Math.PI / 2;
+      tube.position.set(0, Math.cos(a) * 0.09, Math.sin(a) * 0.09);
+      barrel.add(tube);
+    }
+    const muzzle = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.08, 8), amber);
+    muzzle.rotation.z = Math.PI / 2;
+    muzzle.position.x = 0.36;
+    barrel.add(muzzle);
+    const shoulder = box(0.3, 0.2, 0.36, plate);
+    shoulder.position.set(-0.25, 0.55, 0);
+    gunMount.add(housing, barrel, shoulder);
+    torso.add(...arms, gunMount);
+
+    const legs = [leg(0.2, 0.95, 0.85, 0.2, 0.55, joint, dark), leg(-0.2, 0.95, 0.85, 0.2, 0.55, joint, dark)];
+    g.add(torso, ...legs);
+    return { group: g, rig: { torso, legs, arms, head, barrel } };
+  },
 };
 
 export function buildBody(shape, radius) {
