@@ -614,7 +614,7 @@ export class World {
     this.view.burst(x1, y1, byPlayer ? 0x9fe8ff : 0xff6040, 10, 3);
     for (const { e, at } of hits) {
       this.view.burst(src.x + dx * at, src.y + dy * at, byPlayer ? 0x9fe8ff : 0xff6040, 8, 3);
-      if (e.isPlayer) this.damagePlayer(w.damageToPlayer ?? w.damage);
+      if (e.isPlayer) this.damagePlayer(w.damage);
       else this.damage(e, w.damage);
     }
     this.emit('rail', { byPlayer, hits: hits.length });
@@ -672,6 +672,7 @@ export class World {
   damagePlayer(amount) {
     const p = this.player;
     if (!p.alive) return;
+    amount *= config.player.damageTaken;
     p.flash = config.player.hitFlash;
     if (p.form) {
       p.formHp -= amount;
