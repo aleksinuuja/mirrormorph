@@ -5,7 +5,7 @@ Top-down stealth with walking robots. Stay close to one of the two patrolling se
 Two rooms share the same map:
 
 1. **Railguns:** the sentries carry railguns.
-2. **Gatlings:** gunners, which are leaner and teal, carry auto-aiming gatlings that swing slowly.
+2. **Gatlings:** gunners carry huge gatlings. They're sentry-sized but slim and teal, with broad shoulders.
 
 Play: https://aleksinuuja.github.io/mirrormorph/ (add `?debug` to open the tuning panel)
 
@@ -25,7 +25,7 @@ To try it on a phone on the same Wi-Fi, run `python3 -m http.server 8765 --bind 
 - **Move:** touch anywhere and hold. A virtual joystick appears under your finger. Holding still keeps walking, and releasing stops. On desktop you can also use WASD or the arrow keys.
 - **Copy a sentry:** stay within range (1.5 tiles) until the clock fills. Get too close (half that range) and an unaware sentry hears you: it stops, shows a **?**, and turns a full circle to look before carrying on.
 - **FIRE (droid form):** hold to shoot straight ahead, the way you're facing. Space on desktop.
-- **FIRE (gunner form, gatling):** hold to fire. The gun auto-aims at the nearest robot you can see, swinging toward it and staying on it while it's visible, and a reticle marks the target. While locked on, you can walk in any direction and keep firing. With nothing in sight, it fires straight ahead.
+- **FIRE (gunner form, gatling):** hold to fire. You plant your feet and can't walk while it runs. After a short warm-up (0.3 s), it auto-aims at the nearest robot you can see and stays on it while it's visible, and a reticle marks the target. With nothing in sight, the stick swings the gun. Every round kicks you back and jerks the aim. Your rounds hit much harder than theirs.
 - **FIRE (sentry form, railgun):** the first press stops you and enters aim mode, where the stick turns your aim. The second press fires a beam that pierces everything in line up to a wall, one-shotting each sentry it passes through. Pressing while it's still recharging exits aim mode.
 - Any shot raises the alarm and blows your disguise.
 
@@ -36,7 +36,7 @@ To try it on a phone on the same Wi-Fi, run `python3 -m http.server 8765 --bind 
 - If any part of you is in a cone while undisguised, the alarm goes off.
 - Once alerted, all sentries hunt you through the maze for the rest of the attempt. Dying restarts the level.
 - Sentry railguns: a red line tracks you for 1.5 s, then it locks for 0.35 s (it flickers and stops following you), then the beam fires. Sidestep when it locks. A railgun beam does 30 damage and one-shots a sentry. You take half damage from everything, in any form, so a beam does 15 to you and your 40-HP hull takes three hits.
-- Gunner gatlings: the gun spins up for about half a second once it has you in sight, then fires fast, accurate bullets along wherever it points. It turns slowly (1.3 rad/s), so circling close to a gunner outruns its aim. A faint amber line shows where each gunner's gun points.
+- Gunner gatlings: a gunner that sees you plants its feet and winds up for 1 s, with the barrels whirring and an amber line showing where the gun points. Then it sprays for 1.4 s, swinging slowly toward you. Every round jerks its aim and shoves it backwards, so firing gunners skid around and spray wildly. Afterwards it moves for 1.6 s before it can wind up again. The wind-up is your cue to step out of the line.
 - **Escaping:** stand on the green exit for 3 s. A countdown shows, and stepping off resets it.
 - **Emergency door:** a red door in the guard room. When every sentry is destroyed it opens and sends in a new sentry every 3 s, keeping up to 5 alive.
 - **Changing shape restores full HP:** a fresh copy starts at the sentry's full HP, and reverting restores your full hull. Fights can go on indefinitely.

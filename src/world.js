@@ -264,6 +264,8 @@ export class World {
     this.updatePlayerMove(dt);
     if (this.alerted) this.updateField(dt);
     for (const e of this.entities) if (e.alive) this.updateAI(e, dt);
+    for (const e of this.entities) if (e.alive) this.applyKnockback(e, dt);
+    if (p.alive) this.applyKnockback(p, dt);
     this.resolveCollisions();
     for (const e of this.entities) if (e.alive) this.updateCone(e);
     this.updateDetection(dt);
@@ -287,11 +289,15 @@ export class World {
       if (m > 0.2) p.angle = turnToward(p.angle, Math.atan2(iy, ix), config.player.aimTurnRate * dt);
       return;
     }
-    const gunLocked = this.firing && !!this.gunTarget; // gatling: the gun owns your facing
+    if (this.firing && this.weapon?.kind === 'gatling') {
+      // Planted while the gatling runs. With no target in sight the stick swings the gun.
+      if (!this.gunTarget && m > 0.2) p.angle = turnToward(p.angle, Math.atan2(iy, ix), this.weapon.playerTrackRate * dt);
+      return;
+    }
     if (p.speed > 0 && m > 0) {
       p.x += ix * p.speed * dt;
       p.y += iy * p.speed * dt;
-      if (m > 0.05 && !gunLocked) p.angle = turnToward(p.angle, Math.atan2(iy, ix), config.player.turnRate * dt);
+      if (m > 0.05) p.angle = turnToward(p.angle, Math.atan2(iy, ix), config.player.turnRate * dt);
     }
   }
 
@@ -388,7 +394,7 @@ export class World {
     const prev = this.gunTarget;
     this.gunTarget = null;
     if (g) {
-      g.spin = Math.max(0, (g.spin || 0) + (this.firing && p.alive ? dt : -dt * 2));
+      g.spin = clamp((g.spin || 0) + (this.firing && p.alive ? dt : -dt * 2), 0, g.spinUp);
       if (this.firing && p.alive) {
         // Auto-aim: swing toward the nearest robot you can see in range. Stay on the
         // current one while it's still visible, unless another is clearly closer.
@@ -404,10 +410,11 @@ export class World {
     if (!this.firing || !p.alive) return;
     for (const w of p.weapons) {
       if (w.cd > 0 || w.kind === 'rail') continue;
-      if (w.kind === 'gatling' && w.spin < w.spinUp * 0.5) continue; // the hero's gun spins up faster
+      if (w.kind === 'gatling' && w.spin < w.playerSpinUp) continue; // warm-up
       w.cd = 1 / w.rate;
       this.alert(this.isDisguised() ? 'Cover blown' : 'Shots fired'); // gunfire is never quiet
-      this.shoot(p, w, p.angle, 'player', w.spread || 0);
+      if (w.kind === 'gatling') this.fireGatling(p, { ...w, damage: w.playerDamage ?? w.damage }, 'player');
+      else this.shoot(p, w, p.angle, 'player', w.spread || 0);
     }
   }
 
@@ -542,11 +549,7 @@ export class World {
       }
       if (los && w.cd <= 0) { R.state = 'aim'; R.t = w.aimTime; R.angle = e.angle; return; }
     }
-    const gat = w && w.kind === 'gatling' ? w : null;
-    if (gat) {
-      // Spins up while it has you in sight, winds down otherwise.
-      gat.spin = clamp((gat.spin || 0) + (los && d < gat.range ? dt : -dt), 0, gat.spinUp);
-    }
+    if (w && w.kind === 'gatling' && this.gunnerFire(e, w, los, d, dt)) return;
     if (los) {
       const dx = p.x - e.x, dy = p.y - e.y;
       const ux = dx / d, uy = dy / d;
@@ -562,15 +565,6 @@ export class World {
       e.x += mx * huntSpeed * dt;
       e.y += my * huntSpeed * dt;
       const aim = Math.atan2(dy, dx);
-      if (gat) {
-        // Slow swing: the gun only fires along where it points, so circling outruns it.
-        e.angle = turnToward(e.angle, aim, gat.trackRate * dt);
-        if (gat.spin >= gat.spinUp && gat.cd <= 0 && d < gat.range && Math.abs(angleDiff(e.angle, aim)) < gat.fireCone) {
-          gat.cd = 1 / (gat.rate * config.ai.fireRateMult);
-          this.shoot(e, gat, e.angle, 'hostile', gat.spread);
-        }
-        return;
-      }
       e.angle = turnToward(e.angle, aim, config.ai.turnRate * dt);
       if (Math.abs(angleDiff(e.angle, aim)) < 0.3) {
         for (const w of e.weapons) {
@@ -605,6 +599,60 @@ export class World {
     }
   }
 
+  // Gunner: wind-up (planted, gun spinning, slowly swinging at you) → burst (planted,
+  // spraying wherever the gun points, recoil shoving it back) → cooldown (free to move).
+  // Returns true while planted, so the regular hunt movement is skipped.
+  gunnerFire(e, w, los, d, dt) {
+    const p = this.player;
+    const G = e.gat || (e.gat = { state: 'ready', t: 0 });
+    const aim = Math.atan2(p.y - e.y, p.x - e.x);
+    if (G.state === 'cool') {
+      w.spin = Math.max(0, (w.spin || 0) - dt);
+      G.t -= dt;
+      if (G.t <= 0) G.state = 'ready';
+      return false;
+    }
+    if (G.state === 'ready') {
+      w.spin = Math.max(0, (w.spin || 0) - dt);
+      if (!los || d > w.range) return false;
+      G.state = 'windup';
+    }
+    if (G.state === 'windup') {
+      if (!los) { G.state = 'ready'; return false; }
+      e.angle = turnToward(e.angle, aim, w.trackRate * dt);
+      w.spin = Math.min(w.spinUp, (w.spin || 0) + dt);
+      if (w.spin >= w.spinUp) { G.state = 'fire'; G.t = w.burst; }
+      return true;
+    }
+    // fire
+    e.angle = turnToward(e.angle, aim, w.trackRate * dt);
+    G.t -= dt;
+    if (w.cd <= 0) {
+      w.cd = 1 / (w.rate * config.ai.fireRateMult);
+      this.fireGatling(e, w, 'hostile');
+    }
+    if (G.t <= 0) { G.state = 'cool'; G.t = w.burstCooldown; }
+    return true;
+  }
+
+  // One gatling round: sprays along the gun, kicks the aim, shoves the shooter back.
+  fireGatling(src, w, side) {
+    this.shoot(src, w, src.angle, side, w.spread);
+    src.angle += (Math.random() * 2 - 1) * w.kick;
+    src.kvx = (src.kvx || 0) - Math.cos(src.angle) * w.recoil;
+    src.kvy = (src.kvy || 0) - Math.sin(src.angle) * w.recoil;
+  }
+
+  // Recoil slide, with friction.
+  applyKnockback(e, dt) {
+    if (!e.kvx && !e.kvy) return;
+    e.x += e.kvx * dt;
+    e.y += e.kvy * dt;
+    const f = Math.exp(-config.bullets.recoilFriction * dt);
+    e.kvx *= f; e.kvy *= f;
+    if (Math.abs(e.kvx) + Math.abs(e.kvy) < 0.01) e.kvx = e.kvy = 0;
+  }
+
   // ======================================================== shooting
   shoot(src, w, angle, side, aimError = 0) {
     const base = angle + (Math.random() * 2 - 1) * aimError;
@@ -619,8 +667,8 @@ export class World {
     }
     for (const a of angles) {
       const b = {
-        x: src.x + Math.cos(a) * src.radius * 0.9,
-        y: src.y + Math.sin(a) * src.radius * 0.9,
+        x: src.x + Math.cos(a) * (w.muzzle ?? src.radius * 0.9),
+        y: src.y + Math.sin(a) * (w.muzzle ?? src.radius * 0.9),
         vx: Math.cos(a) * w.bulletSpeed,
         vy: Math.sin(a) * w.bulletSpeed,
         life: config.bullets.life,

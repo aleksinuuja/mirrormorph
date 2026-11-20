@@ -67,6 +67,7 @@ export const config = {
   bullets: {
     life: 2.0,
     radius: 0.08,
+    recoilFriction: 5,      // how fast recoil shoves die out (higher = less skid)
   },
 
   camera: {
@@ -94,13 +95,17 @@ export const config = {
     },
     gunner: {
       label: 'Gunner', shape: 'gunner',
-      radius: 0.34, hp: 30, speed: 3.0, mass: 3, preferredRange: 5,
-      // Gatling: auto-aims at the nearest enemy but the gun swings slowly (trackRate rad/s),
-      // so you can outrun its aim by circling. It spins up before the first shot.
-      // In gunner form the hero holds FIRE; the gun swings faster (playerTrackRate) to the nearest visible sentry.
+      radius: 0.4, hp: 30, speed: 3.0, mass: 3, preferredRange: 5,
+      // Gatling. Gunners plant their feet, spin up for spinUp s (barrels whirl, amber line),
+      // then spray for `burst` s wherever the slowly swinging gun points (trackRate rad/s).
+      // Every round kicks the aim (kick rad) and shoves the shooter back (recoil tiles/s),
+      // so they skid around while firing. Then burstCooldown s of moving before the next one.
+      // In gunner form the hero holds FIRE: planted, short warm-up, fast auto-aim, hits harder.
       weapons: [{
-        kind: 'gatling', rate: 14, damage: 3, bulletSpeed: 22, spread: 0.07,
-        trackRate: 1.3, playerTrackRate: 5, fireCone: 0.25, spinUp: 0.45, range: 11,
+        kind: 'gatling', rate: 14, damage: 3, bulletSpeed: 20, spread: 0.08,
+        spinUp: 1.0, burst: 1.4, burstCooldown: 1.6, trackRate: 1.3, range: 11,
+        kick: 0.12, recoil: 0.55, muzzle: 0.8, // muzzle: tiles from the body centre (the gun is big)
+        playerSpinUp: 0.3, playerTrackRate: 6, playerDamage: 8,
       }],
     },
   },

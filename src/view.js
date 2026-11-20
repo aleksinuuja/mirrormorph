@@ -446,7 +446,8 @@ export class View {
       if (o.rig) animateRig(o.rig, o.phase, o.walk, e.gaze != null ? e.gaze - e.angle : 0);
       if (o.rig?.barrel) {
         const gw = e.weapons?.[0];
-        const spin = gw?.spinUp ? Math.min(1, (gw.spin || 0) / gw.spinUp) : 0;
+        const full = e.isPlayer ? gw?.playerSpinUp : gw?.spinUp;
+        const spin = full ? Math.min(1, (gw.spin || 0) / full) : 0;
         o.rig.barrel.rotation.x += spin * 40 * simDt;
       }
 
@@ -486,7 +487,7 @@ export class View {
         show = true;
         ang = e.rail.angle;
         blink = e.rail.state === 'lock';
-      } else if (world.alerted && w?.kind === 'gatling' && (w.spin || 0) > 0) {
+      } else if (world.alerted && w?.kind === 'gatling' && (e.gat?.state === 'windup' || e.gat?.state === 'fire')) {
         // Gunners: a faint amber line where the gun points, so you can read its swing.
         show = 'gatling';
       }
