@@ -67,7 +67,7 @@ export const config = {
   bullets: {
     life: 2.0,
     radius: 0.08,
-    recoilFriction: 5,      // how fast recoil shoves die out (higher = less skid)
+    recoilFriction: 4,      // how fast recoil shoves die out (higher = less skid)
   },
 
   camera: {
@@ -104,7 +104,7 @@ export const config = {
       weapons: [{
         kind: 'gatling', rate: 14, damage: 3, bulletSpeed: 20, spread: 0.08,
         spinUp: 1.0, burst: 1.4, burstCooldown: 1.6, trackRate: 1.3, range: 11,
-        kick: 0.12, recoil: 0.55, muzzle: 0.8, // muzzle: tiles from the body centre (the gun is big)
+        kick: 0.12, recoil: 1.8, muzzle: 0.8, // muzzle: tiles from the body centre (the gun is big)
         playerSpinUp: 0.3, playerTrackRate: 6, playerDamage: 8,
       }],
     },
