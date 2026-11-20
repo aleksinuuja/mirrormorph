@@ -568,7 +568,7 @@ export class World {
       e.angle = turnToward(e.angle, aim, config.ai.turnRate * dt);
       if (Math.abs(angleDiff(e.angle, aim)) < 0.3) {
         for (const w of e.weapons) {
-          if (w.cd > 0 || w.kind === 'rail') continue;
+          if (w.cd > 0 || w.kind === 'rail' || w.kind === 'gatling') continue; // those fire from their own state machines
           w.cd = 1 / (w.rate * config.ai.fireRateMult);
           this.shoot(e, w, Math.atan2(p.y - e.y, p.x - e.x), 'hostile', config.ai.aimError);
         }
